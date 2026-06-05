@@ -132,7 +132,7 @@ export default function RegisterForm() {
           <div className="space-y-2">
             <Input
               {...register("email")}
-              type="o"
+              type="email"
               placeholder="البريد الإلكتروني"
               className="w-full h-12"
             />

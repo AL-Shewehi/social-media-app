@@ -46,3 +46,14 @@ export async function registerUser(values: {
 
   return { success: true };
 }
+
+
+export async function requireUser() {
+  const supabase = await createServerSupabaseClient();
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
+    throw new Error("يجب تسجيل الدخول أولاً للقيام بهذا الإجراء");
+  }
+  return { supabase, user };
+}

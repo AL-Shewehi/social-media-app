@@ -3,6 +3,8 @@ import "./globals.css";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import ReactQueryProvider from "@/lib/react-query";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { Toaster } from "@/components/ui/sonner"
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
 
@@ -17,9 +19,20 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={cn("font-sans", geist.variable)}>
+    <html lang="en" className={cn("font-sans", geist.variable)} suppressHydrationWarning>
       <ReactQueryProvider>
-        <body dir="rtl">{children}</body>
+        <body suppressHydrationWarning dir="rtl">
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            forcedTheme="light"
+            enableSystem={false}
+            disableTransitionOnChange
+          >
+            {children}
+            <Toaster />
+          </ThemeProvider>
+        </body>
       </ReactQueryProvider>
     </html>
   );
