@@ -20,11 +20,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useRouter } from "next/navigation";
+import { useAuth } from "../hooks/useAuth";
 
 // هنا هنستخدم Zod عشان نضمن ان الداتا اللي داخلة صحيحة
 export type RegisterFormValues = z.infer<typeof signupSchema>;
 
 export default function RegisterForm() {
+  const router = useRouter();
+  const { register: registerUser, isLoading, error: authError } = useAuth();
   const {
     register,
     handleSubmit,
@@ -34,9 +38,11 @@ export default function RegisterForm() {
     resolver: zodResolver(signupSchema),
   });
 
-  const onSubmit = (values: RegisterFormValues) => {
-    console.log(values);
-    // TODO: handle login with supabase
+  const onSubmit = async (values: RegisterFormValues) => {
+    const result = await registerUser(values);
+    if (result) {
+      router.push("/login");
+    }
   };
   return (
     <Card>
@@ -48,6 +54,11 @@ export default function RegisterForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {authError && (
+            <p className="text-sm p-3 bg-red-50 text-red-600 rounded-md text-center mb-4">
+              {authError}
+            </p>
+          )}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -97,8 +108,13 @@ export default function RegisterForm() {
                 <Select
                   onValueChange={field.onChange}
                   defaultValue={field.value}
+                  value={field.value}
                 >
-                  <SelectTrigger className="w-full h-12" dir="rtl" style={{textAlign: "right", height: "48px"}}>
+                  <SelectTrigger
+                    className="w-full h-12"
+                    dir="rtl"
+                    style={{ textAlign: "right", height: "48px" }}
+                  >
                     <SelectValue placeholder="الجنس" />
                   </SelectTrigger>
                   <SelectContent dir="rtl">

@@ -13,11 +13,15 @@ import {
 } from "@/components/ui/card";
 import { loginSchema } from "@/lib/zod";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "../hooks/useAuth";
 
 // هنا هنستخدم Zod عشان نضمن ان الداتا اللي داخلة صحيحة
 export type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginForm() {
+  const router = useRouter();
+  const { login: loginUser, isLoading, error: authError } = useAuth();
   const {
     register,
     handleSubmit,
@@ -26,9 +30,12 @@ export default function LoginForm() {
     resolver: zodResolver(loginSchema),
   });
 
-  const onSubmit = (values: LoginFormValues) => {
-    console.log(values);
-    // TODO: handle login with supabase
+  const onSubmit = async (values: LoginFormValues) => {
+    const result = await loginUser(values);
+    if (result) {
+      router.push("/");
+      router.refresh();
+    }
   };
   return (
     <Card>
@@ -39,6 +46,11 @@ export default function LoginForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {authError && (
+          <p className="text-sm p-3 bg-red-50 text-red-600 rounded-md text-center mb-4">
+            {authError}
+          </p>
+        )}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
             <Input

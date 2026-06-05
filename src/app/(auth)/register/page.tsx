@@ -6,7 +6,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="flex-1 items-center justify-center hidden md:flex">
-        <Image src={"/assets/login.png"} alt="Login" width={500} height={500} />
+        <Image src={"/assets/login.png"} alt="Login" priority width={500} height={500} />
       </div>
 
       {/* Divider */}
