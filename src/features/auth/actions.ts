@@ -27,11 +27,14 @@ export async function registerUser(values: {
 }) {
   const supabase = await createServerSupabaseClient();
 
+  const fullName = `${values.firstName} ${values.lastName}`.trim();
+
   const { error } = await supabase.auth.signUp({
     email: values.email,
     password: values.password,
     options: {
       data: {
+        full_name: fullName,
         firstName: values.firstName,
         lastName: values.lastName,
         birthDate: values.birthDate,

@@ -1,17 +1,17 @@
 "use server"
-import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { requireUser } from "../auth/actions";
 
 
 
-export async function createPostAction(content: string) {
+export async function createPostAction(content: string, imageUrl?: string | null) {
     try {
-       const { supabase, user } = await requireUser();
+        const { supabase, user } = await requireUser();
 
         const { data, error } = await supabase.from("posts").insert([{
             user_id: user.id,
-            content: content.trim()
+            content: content.trim(),
+            image_url: imageUrl || null
         }]).select().single()
 
         if (error) throw error
@@ -20,6 +20,21 @@ export async function createPostAction(content: string) {
     } catch (error: unknown) {
         console.error("createPostAction error:", error)
         return { success: false, error: "حدث خطأ أثناء نشر المنشور" }
+    }
+}
+
+export async function deletePostAction(postId: string) {
+    try {
+        const { supabase, user } = await requireUser();
+
+        const { error } = await supabase.from("posts").delete().eq("id", postId).eq("user_id", user.id)
+        if (error) throw error
+
+        revalidatePath("/");
+        return { success: true }
+    } catch (error: unknown) {
+        console.error("deletePostAction error:", error);
+        return { success: false, error: error instanceof Error ? error.message : "حدث خطأ أثناء حذف المنشور" }
     }
 }
 
@@ -46,7 +61,7 @@ export async function createCommentAction(postId: string, content: string) {
 
 export async function toggleLikeAction(postId: string) {
     try {
-       const { supabase, user } = await requireUser();
+        const { supabase, user } = await requireUser();
 
         const { data: existingLike, error: checkError } = await supabase
             .from("likes")

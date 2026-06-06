@@ -15,16 +15,16 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import type { Profile } from "@/types/database.types";
+import { useUIStore } from "@/store/useUIStore";
 
 interface NavbarProps {
-    user: {
-        full_name: string | null;
-        avatar_url: string | null;
-    } | null; 
+    user: Profile | null; 
 }
 
 export default function Navbar({ user }: NavbarProps) {
     const pathname = usePathname();
+    const toggleMobileSidebar = useUIStore((state) => state.toggleMobileSidebar);
 
     const Author = user?.full_name || "مستخدم مجهول";
     const fallbackLetter = Author.charAt(0).toUpperCase();
@@ -54,7 +54,7 @@ export default function Navbar({ user }: NavbarProps) {
                     <Button variant="secondary" size="icon" className="rounded-full h-10 w-10 bg-secondary">
                         <Search className="h-5 w-5" />
                     </Button>
-                    <Button variant="secondary" size="icon" className="rounded-full h-10 w-10 bg-secondary">
+                    <Button onClick={toggleMobileSidebar} variant="secondary" size="icon" className="rounded-full h-10 w-10 bg-secondary">
                         <Menu className="h-5 w-5" />
                     </Button>
                 </div>
