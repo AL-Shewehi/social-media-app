@@ -98,7 +98,7 @@ export default function Navbar({ user }: NavbarProps) {
                     <Bell className="h-5 w-5" />
                 </Button>
 
-                <Link href="/profile" className="mr-1 hover:brightness-95 transition">
+                <Link href={`/profile/${user?.id}`} className="mr-1 hover:brightness-95 transition">
                     <Avatar className="h-10 w-10 border border-border">
                         <AvatarImage src={avatar || undefined} alt={Author} />
                         <AvatarFallback className="bg-primary text-white font-bold">{fallbackLetter}</AvatarFallback>

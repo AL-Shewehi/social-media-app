@@ -4,8 +4,9 @@ import { requireUser } from "@/features/auth/actions";
 import { getProfile } from "@/lib/supabase/server";
 
 export default async function MainLayout({ children }: { children: React.ReactNode }) {
-  const { supabase, user } = await requireUser();
+  const { user } = await requireUser();
   const profile = await getProfile(user.id);
+
 
   return (
     <div className="min-h-screen bg-background ">

@@ -29,7 +29,7 @@ export async function registerUser(values: {
 
   const fullName = `${values.firstName} ${values.lastName}`.trim();
 
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email: values.email,
     password: values.password,
     options: {
@@ -45,6 +45,15 @@ export async function registerUser(values: {
 
   if (error) {
     return { error: error.message };
+  }
+
+  const userId = data.user?.id;
+  if (userId) {
+    await supabase.from("profiles").upsert({
+      id: userId,
+      full_name: fullName,
+      avatar_url: null,
+    });
   }
 
   return { success: true };

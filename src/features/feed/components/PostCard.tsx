@@ -2,25 +2,43 @@
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+} from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuTrigger
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ThumbsUp, MessageCircle, Share2, MoreHorizontal, Globe, Bookmark, Trash2 } from "lucide-react";
+import {
+  ThumbsUp,
+  MessageCircle,
+  Share2,
+  MoreHorizontal,
+  Globe,
+  Bookmark,
+  Trash2,
+} from "lucide-react";
 import { type PostCardProps } from "@/types/database.types";
 import { useState } from "react";
 import CommentsDialog from "./CommentsDialog";
 import { toggleLikeAction, deletePostAction } from "../actions";
 import { toast } from "sonner";
 import { DeletePostDialog } from "./DeletePostDialog";
+import Link from "next/link";
 
-export default function PostCard({ post, currentUserId, currentUserProfile }: PostCardProps) {
+export default function PostCard({
+  post,
+  currentUserId,
+  currentUserProfile,
+}: PostCardProps) {
   const [isLikePending, setIsLikePending] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   const formattedDate = new Date(post.created_at).toLocaleDateString("ar-EG", {
@@ -35,7 +53,8 @@ export default function PostCard({ post, currentUserId, currentUserProfile }: Po
   const fallbackLetter = autherName.charAt(0).toUpperCase();
 
   const likesCount = post.likes?.length || 0;
-  const isLikedByMe = post.likes?.some(like => like.user_id === currentUserId) || false;
+  const isLikedByMe =
+    post.likes?.some((like) => like.user_id === currentUserId) || false;
   const isOwnPost = post.user_id === currentUserId;
 
   const handleLikeToggle = async () => {
@@ -69,12 +88,18 @@ export default function PostCard({ post, currentUserId, currentUserProfile }: Po
     <Card className="w-full shadow-sm border rounded-xl bg-card mb-4 select-none overflow-hidden">
       <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between space-y-0">
         <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10 border">
-            <AvatarImage src={avatar_url} alt={autherName} />
-            <AvatarFallback className="bg-primary text-white font-bold">{fallbackLetter}</AvatarFallback>
-          </Avatar>
+          <Link href={`/profile/${post.profiles?.id}`}>
+            <Avatar className="h-10 w-10 border">
+              <AvatarImage src={avatar_url} alt={autherName} />
+              <AvatarFallback className="bg-primary text-white font-bold">
+                {fallbackLetter}
+              </AvatarFallback>
+            </Avatar>
+          </Link>
           <div>
-            <h4 className="font-semibold text-[15px] hover:underline cursor-pointer">{autherName}</h4>
+            <Link href={`/profile/${post.profiles?.id}`} className="font-semibold text-[15px] hover:underline cursor-pointer">
+              {autherName}
+            </Link>
             <div className="flex items-center gap-1 text-muted-foreground text-xs mt-0.5">
               <span>{formattedDate}</span>
               <span>•</span>
@@ -84,11 +109,18 @@ export default function PostCard({ post, currentUserId, currentUserProfile }: Po
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 text-muted-foreground cursor-pointer">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full h-8 w-8 text-muted-foreground cursor-pointer"
+            >
               <MoreHorizontal className="h-5 w-5" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48 rounded-xl p-1 bg-card border shadow-md">
+          <DropdownMenuContent
+            align="end"
+            className="w-48 rounded-xl p-1 bg-card border shadow-md"
+          >
             <DropdownMenuItem className="flex items-center gap-2 p-2.5 rounded-lg text-sm cursor-pointer hover:bg-secondary">
               <Bookmark className="h-4 w-4 text-muted-foreground" />
               <span>حفظ المنشور</span>
@@ -111,7 +143,10 @@ export default function PostCard({ post, currentUserId, currentUserProfile }: Po
       </CardHeader>
 
       {/* محتوى النص */}
-      <CardContent className="p-4 pt-2 pb-3 text-[15px] leading-relaxed text-foreground wrap-break-word" dir="auto">
+      <CardContent
+        className="p-4 pt-2 pb-3 text-[15px] leading-relaxed text-foreground wrap-break-word"
+        dir="auto"
+      >
         {post.content}
       </CardContent>
 
@@ -144,7 +179,8 @@ export default function PostCard({ post, currentUserId, currentUserProfile }: Po
                 onClick={() => setIsCommentsOpen(true)}
                 className="hover:underline cursor-pointer"
               >
-                {post.comments?.length} {post.comments?.length === 1 ? "تعليق" : "تعليقات"}
+                {post.comments?.length}{" "}
+                {post.comments?.length === 1 ? "تعليق" : "تعليقات"}
               </span>
             )}
           </div>
@@ -152,7 +188,9 @@ export default function PostCard({ post, currentUserId, currentUserProfile }: Po
       )}
 
       <div className="px-4">
-        {!(likesCount > 0 || (post.comments?.length || 0) > 0) && <div className="border-t border-border" />}
+        {!(likesCount > 0 || (post.comments?.length || 0) > 0) && (
+          <div className="border-t border-border" />
+        )}
       </div>
 
       <CardFooter className="p-1 flex items-center justify-between gap-1">
@@ -160,12 +198,15 @@ export default function PostCard({ post, currentUserId, currentUserProfile }: Po
           variant="ghost"
           onClick={handleLikeToggle}
           disabled={isLikePending}
-          className={`flex-1 gap-2 h-9 rounded-lg hover:bg-secondary transition text-sm font-medium ${isLikedByMe
-            ? "text-primary hover:text-primary bg-primary/5 hover:bg-primary/10"
-            : "text-muted-foreground"
-            }`}
+          className={`flex-1 gap-2 h-9 rounded-lg hover:bg-secondary transition text-sm font-medium ${
+            isLikedByMe
+              ? "text-primary hover:text-primary bg-primary/5 hover:bg-primary/10"
+              : "text-muted-foreground"
+          }`}
         >
-          <ThumbsUp className={`h-5 w-5 ${isLikedByMe ? "fill-current" : ""}`} />
+          <ThumbsUp
+            className={`h-5 w-5 ${isLikedByMe ? "fill-current" : ""}`}
+          />
           <span>إعجاب</span>
         </Button>
 
@@ -178,7 +219,10 @@ export default function PostCard({ post, currentUserId, currentUserProfile }: Po
           <span>تعليق</span>
         </Button>
 
-        <Button variant="ghost" className="flex-1 gap-2 h-9 text-muted-foreground rounded-lg hover:bg-secondary transition text-sm">
+        <Button
+          variant="ghost"
+          className="flex-1 gap-2 h-9 text-muted-foreground rounded-lg hover:bg-secondary transition text-sm"
+        >
           <Share2 className="h-5 w-5" />
           <span>مشاركة</span>
         </Button>

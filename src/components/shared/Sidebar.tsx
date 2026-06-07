@@ -71,7 +71,7 @@ export default function Sidebar({ user }: SidebarProps) {
 
                 {/* البروفايل الشخصي */}
                 <Link
-                    href="/profile"
+                    href={`/profile/${user?.id}`}
                     onClick={() => setMobileSidebarOpen(false)}
                     className="flex items-center gap-3 px-2 py-1.5 w-full rounded-xl hover:bg-secondary/80 transition"
                 >

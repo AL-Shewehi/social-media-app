@@ -23,6 +23,7 @@ export default async function FeedList({ currentUserProfile }: FeedListProps) {
       user_id,
       image_url,
       profiles!posts_user_id_fkey (
+        id,
         full_name,
         avatar_url
       ),
