@@ -11,9 +11,10 @@ interface RealtimeFeedListProps {
     initialPosts: Post[]
     currentUserId: string;
     currentUserProfile?: Profile | null;
+    allowedUserIds?: string[];
 }
 
-export default function RealtimeFeedList({ initialPosts, currentUserId, currentUserProfile }: RealtimeFeedListProps) {
+export default function RealtimeFeedList({ initialPosts, currentUserId, currentUserProfile, allowedUserIds }: RealtimeFeedListProps) {
     const router = useRouter();
     const [posts, setPosts] = useState<Post[]>(initialPosts);
 
@@ -37,7 +38,15 @@ export default function RealtimeFeedList({ initialPosts, currentUserId, currentU
 
                     if (payload.eventType === "DELETE") {
                         setPosts((prev) => prev.filter((p) => p.id !== payload.old.id));
+                    } else if (payload.eventType === "INSERT") {
+                        // 👈 حماية الـ Realtime: لو البوست لواحد مش صديقك، ارميه وتجاهله
+                        const newPostUserId = payload.new?.user_id;
+                        if (allowedUserIds && newPostUserId && !allowedUserIds.includes(newPostUserId)) {
+                            return;
+                        }
+                        router.refresh();
                     } else {
+                        // في حالة الـ UPDATE
                         router.refresh();
                     }
                 }
@@ -56,7 +65,7 @@ export default function RealtimeFeedList({ initialPosts, currentUserId, currentU
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [router])
+    }, [router, allowedUserIds]);
 
     if (posts.length === 0) {
         return (
@@ -66,7 +75,7 @@ export default function RealtimeFeedList({ initialPosts, currentUserId, currentU
                         <MessageCircle className="h-8 w-8 text-muted-foreground" />
                     </div>
                     <h3 className="text-lg font-semibold text-foreground mb-2">لا توجد منشورات بعد</h3>
-                    <p className="text-sm text-muted-foreground">شارك أول منشور لك أو اتبع بعض الحسابات</p>
+                    <p className="text-sm text-muted-foreground">شارك أول منشور لك أو قم بإضافة بعض الأصدقاء</p>
                 </div>
             </div>
         );

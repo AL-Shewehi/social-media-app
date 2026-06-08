@@ -14,6 +14,29 @@ function normalizeProfile(profiles: unknown): Profile | null {
 
 export default async function FeedList({ currentUserProfile }: FeedListProps) {
   const supabase = await createServerSupabaseClient();
+  
+  // 1. جلب المستخدم الحالي (عشان نعرف الـ user_id ونحدد الصداقات المسموح لها تشوف البوستات)
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // 2. جلب علاقات الصداقة المقبولة وبناء قائمة الـ IDs المسموح بها (أنا + أصدقائي)
+  let allowedUserIds: string[] = [];
+  if (user) {
+    const { data: friendships } = await supabase
+      .from("friendships")
+      .select("sender_id, receiver_id")
+      .eq("status", "accepted")
+      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
+
+    const friendIds = friendships?.map((f) =>
+      f.sender_id === user.id ? f.receiver_id : f.sender_id
+    ) || [];
+
+    allowedUserIds = [user.id, ...friendIds];
+  }
+
+  // 3. الفلترة السحرية: جلب المنشورات فقط للأشخاص الموجودين في allowedUserIds
   const { data: posts, error } = await supabase
     .from("posts")
     .select(`
@@ -42,6 +65,8 @@ export default async function FeedList({ currentUserProfile }: FeedListProps) {
         user_id
       )
     `)
+    // فقط المنشورات الخاصة بالصداقات المقبولة
+    .in("user_id", allowedUserIds.length > 0 ? allowedUserIds : ['00000000-0000-0000-0000-000000000000'])
     .order("created_at", { ascending: false })
     .order("created_at", { referencedTable: "comments", ascending: true });
 
@@ -54,11 +79,7 @@ export default async function FeedList({ currentUserProfile }: FeedListProps) {
     );
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  // ─── تسوية وتنظيف البيانات بالكامل في السيرفر ───
+  // إعداد الـ Realtime Subscription مع فلترة الأمان بناءً على allowedUserIds
   const formattedPosts = posts?.map((post) => ({
     ...post,
     profiles: normalizeProfile(post.profiles),
@@ -74,6 +95,7 @@ export default async function FeedList({ currentUserProfile }: FeedListProps) {
       initialPosts={formattedPosts}
       currentUserId={user?.id ?? ""}
       currentUserProfile={currentUserProfile ?? null}
+      allowedUserIds={allowedUserIds}
     />
   );
 }
