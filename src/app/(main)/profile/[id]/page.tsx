@@ -7,6 +7,7 @@ import { Calendar, Edit } from "lucide-react";
 import { redirect } from "next/navigation";
 import EditProfileDialog from "@/features/profile/components/EditProfileDialog";
 import CreatePost from "@/features/feed/components/CreatePost";
+import FriendshipButton from "@/features/friends/components/FriendshipButton";
 
 function normalizeProfile(profiles: unknown): Profile | null {
   if (!profiles) return null;
@@ -84,6 +85,14 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     .eq("user_id", profileUserId) // فلترة البوستات بناءً على البروفايل المفتوح
     .order("created_at", { ascending: false });
 
+  const { data: friendshipData } = await supabase
+    .from("friendships")
+    .select("id, sender_id, receiver_id, status")
+    .or(
+      `and(sender_id.eq.${user.id},receiver_id.eq.${profileUserId}),and(sender_id.eq.${profileUserId},receiver_id.eq.${user.id})`,
+    )
+    .maybeSingle(); // استخدام maybeSingle لمنع ضرب الخطأ لو مفيش صداقة لسه
+
   // 4. تسوية البروفايلات والبيانات
   const formattedPosts =
     posts?.map((post) => ({
@@ -99,7 +108,6 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
 
   const fullName = targetProfile.full_name || "مستخدم مجهول";
   const fallbackLetter = fullName.charAt(0).toUpperCase();
-
 
   const isMyOwnProfile = user.id === profileUserId;
 
@@ -134,7 +142,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           </div>
 
           {/* زر تعديل الحساب: يظهر فقط وفقط إذا كنت أنا صاحب البروفايل ده */}
-          {isMyOwnProfile && (
+          {isMyOwnProfile ? (
             <EditProfileDialog
               userProfile={targetProfile}
               trigger={
@@ -143,6 +151,13 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                   <span>تعديل الملف الشخصي</span>
                 </Button>
               }
+            />
+          ) : (
+            // زر طلب الصداقة أو إدارة الصداقة: يظهر فقط لو ده مش حسابي
+            <FriendshipButton
+              targetUserId={profileUserId}
+              currentUserId={user.id}
+              initialFriendship={friendshipData}
             />
           )}
         </div>
