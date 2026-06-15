@@ -23,8 +23,9 @@ import {
   Bookmark,
   Trash2,
 } from "lucide-react";
-import { type PostCardProps } from "@/types/database.types";
-import { useState, useCallback } from "react";
+import { type PostCardProps, type PostCardPost } from "@/types/database.types";
+import { useState } from "react";
+import { useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import CommentsDialog from "./CommentsDialog";
 import { toggleLikeAction, deletePostAction } from "@/features/feed/actions";
 import { toast } from "sonner";
@@ -42,9 +43,8 @@ export default function PostCard({
   currentUserProfile,
   priority = false,
 }: PostCardProps) {
-  const [isLikePending, setIsLikePending] = useState(false);
+  const queryClient = useQueryClient();
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isLikesOpen, setIsLikesOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
@@ -60,20 +60,10 @@ export default function PostCard({
     ? sharedPost.profiles[0]
     : sharedPost?.profiles;
 
-  const computedLikesCount = post.likesCount ?? post.likes?.length ?? 0;
-  const computedIsLikedByMe =
+  const displayLikesCount = post.likesCount ?? post.likes?.length ?? 0;
+  const displayIsLikedByMe =
     post.isLikedByMe ??
     (post.likes?.some((like) => like.user_id === currentUserId) || false);
-
-  const [optimisticUpdate, setOptimisticUpdate] = useState<{
-    isLikedByMe: boolean;
-    likesCount: number;
-  } | null>(null);
-
-
-  const displayLikesCount = optimisticUpdate?.likesCount ?? computedLikesCount;
-  const displayIsLikedByMe =
-    optimisticUpdate?.isLikedByMe ?? computedIsLikedByMe;
 
   const formattedDate = formatRelativeTime(post.created_at);
   const authorName = post.profiles?.full_name || "مستخدم مجهول";
@@ -86,48 +76,91 @@ export default function PostCard({
     ? `/profile/${sharedProfile.id}`
     : "#";
 
-  const handleLikeToggle = useCallback(async () => {
-    if (isLikePending) return;
-    setIsLikePending(true);
+  const likeMutation = useMutation({
+    mutationFn: toggleLikeAction,
+    onMutate: async (postId) => {
+      await queryClient.cancelQueries({ queryKey: ["feed"] });
+      const previousQueries = queryClient
+        .getQueryCache()
+        .findAll({ queryKey: ["feed"] })
+        .map((q) => [q.queryKey, queryClient.getQueryData(q.queryKey)] as const);
 
+      queryClient
+        .getQueryCache()
+        .findAll({ queryKey: ["feed"] })
+        .forEach((query) => {
+          queryClient.setQueryData<InfiniteData<PostCardPost[]>>(
+            query.queryKey,
+            (old) => {
+              if (!old) return old;
+              return {
+                ...old,
+                pages: old.pages.map((page) =>
+                  page.map((p) => {
+                    if (p.id !== postId) return p;
+                    const newIsLiked = !p.isLikedByMe;
+                    return {
+                      ...p,
+                      isLikedByMe: newIsLiked,
+                      likesCount: (p.likesCount ?? 0) + (newIsLiked ? 1 : -1),
+                    };
+                  })
+                ),
+              };
+            }
+          );
+        });
 
-    const newIsLiked = !displayIsLikedByMe;
-    const newCount = displayIsLikedByMe
-      ? displayLikesCount - 1
-      : displayLikesCount + 1;
+      return { previousQueries };
+    },
+    onError: (_err, _postId, context) => {
+      if (context?.previousQueries) {
+        for (const [key, data] of context.previousQueries) {
+          if (data) queryClient.setQueryData(key, data);
+        }
+      }
+      toast.error("فشل تعديل الإعجاب");
+    },
+  });
 
-    setOptimisticUpdate({
-      isLikedByMe: newIsLiked,
-      likesCount: newCount,
-    });
+  const handleLikeToggle = () => {
+    if (likeMutation.isPending) return;
+    likeMutation.mutate(post.id);
+  };
 
-    // تنفيذ الإجراء الفعلي لتبديل الإعجاب
-    const result = await toggleLikeAction(post.id);
+  const handleDelete = () => {
+    deleteMutation.mutate(post.id);
+  };
 
-    setIsLikePending(false);
-
-    //  مسح الـ Override المحلي، وترك القيم الجديدة القادمة من السيرفر (عن طريق Realtime) تتولى المهمة
-    setOptimisticUpdate(null);
-
-    if (!result.success) {
-      toast.error(result.error || "فشل تعديل الإعجاب");
-    }
-  }, [isLikePending, displayIsLikedByMe, displayLikesCount, post.id]);
-
-  const handleDelete = useCallback(async () => {
-    if (isDeleting) return;
-
-    setIsDeleting(true);
-    const result = await deletePostAction(post.id);
-    setIsDeleting(false);
-
-    if (result.success) {
+  const deleteMutation = useMutation({
+    mutationFn: deletePostAction,
+    onSuccess: (_data) => {
+      queryClient
+        .getQueryCache()
+        .findAll({ queryKey: ["feed"] })
+        .forEach((query) => {
+          queryClient.setQueryData<InfiniteData<PostCardPost[]>>(
+            query.queryKey,
+            (old) => {
+              if (!old) return old;
+              return {
+                ...old,
+                pages: old.pages.map((page) =>
+                  page.filter((p) => p.id !== post.id)
+                ),
+              };
+            }
+          );
+        });
       toast.success("تم حذف المنشور بنجاح");
       setIsDeleteOpen(false);
-    } else {
-      toast.error(result.error || "فشل حذف المنشور");
-    }
-  }, [isDeleting, post.id]);
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "فشل حذف المنشور"
+      );
+    },
+  });
 
   return (
     <Card className="w-full shadow-sm border rounded-xl bg-card mb-4 select-none overflow-hidden">
@@ -305,7 +338,7 @@ export default function PostCard({
         <Button
           variant="ghost"
           onClick={handleLikeToggle}
-          disabled={isLikePending}
+          disabled={likeMutation.isPending}
           className={`flex-1 gap-2 h-9 rounded-lg hover:bg-secondary transition text-sm font-medium ${
             displayIsLikedByMe
               ? "text-primary hover:text-primary bg-primary/5 hover:bg-primary/10"
@@ -358,7 +391,7 @@ export default function PostCard({
       <DeletePostDialog
         open={isDeleteOpen}
         onOpenChange={setIsDeleteOpen}
-        isDeleting={isDeleting}
+        isDeleting={deleteMutation.isPending}
         onConfirm={handleDelete}
       />
 

@@ -4,13 +4,14 @@ import { Profile, PostCardPost } from "@/types/database.types";
 import { MessageCircle } from "lucide-react";
 import PostCard from "./PostCard";
 import PostCardSkeleton from "./PostCardSkeleton";
-import { usePosts } from "../hooks/usePosts";
+import { useFeedPosts } from "../hooks/useFeedPosts";
 
 interface RealtimeFeedListProps {
   initialPosts: PostCardPost[];
   currentUserId: string;
   currentUserProfile?: Profile | null;
   allowedUserIds?: string[];
+  profileUserId?: string;
 }
 
 export default function RealtimeFeedList({
@@ -18,11 +19,13 @@ export default function RealtimeFeedList({
   currentUserId,
   currentUserProfile,
   allowedUserIds,
+  profileUserId,
 }: RealtimeFeedListProps) {
   
-  const { posts, hasMore, loadMoreRef } = usePosts({
+  const { posts, hasMore, loadMoreRef } = useFeedPosts({
     initialPosts,
     allowedUserIds,
+    profileUserId,
   });
 
   if (posts.length === 0) {

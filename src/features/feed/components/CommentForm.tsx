@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { createCommentAction } from "@/features/feed/actions";
+import { useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import type { Profile, Comment, PostCardPost } from "@/types/database.types";
 import { toast } from "sonner";
 import { Send } from "lucide-react";
-import type { Profile } from "@/types/database.types";
 
 interface CommentFormProps {
   postId: string;
@@ -13,24 +14,63 @@ interface CommentFormProps {
 }
 
 export default function CommentForm({ postId, user }: CommentFormProps) {
+  const queryClient = useQueryClient();
   const [commentText, setCommentText] = useState("");
-  const [isPending, setIsPending] = useState(false);
 
   const fallbackLetter = user?.full_name?.charAt(0).toUpperCase() || "?";
 
-  const handleCommentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!commentText.trim() || isPending) return;
-
-    setIsPending(true);
-    const result = await createCommentAction(postId, commentText);
-    setIsPending(false);
-
-    if (result.success) {
+  const commentMutation = useMutation({
+    mutationFn: async (content: string) => {
+      const result = await createCommentAction(postId, content);
+      if (!result.success) throw new Error(result.error);
+      return result.data;
+    },
+    onSuccess: (newCommentData) => {
       setCommentText("");
-    } else {
-      toast.error(result.error || "فشل إضافة التعليق");
-    }
+
+      const newComment: Comment = {
+        id: newCommentData.id,
+        content: newCommentData.content,
+        created_at: newCommentData.created_at,
+        user_id: newCommentData.user_id,
+        profiles: user,
+      };
+
+      queryClient
+        .getQueryCache()
+        .findAll({ queryKey: ["feed"] })
+        .forEach((query) => {
+          queryClient.setQueryData<InfiniteData<PostCardPost[]>>(
+            query.queryKey,
+            (old) => {
+              if (!old) return old;
+              return {
+                ...old,
+                pages: old.pages.map((page) =>
+                  page.map((p) => {
+                    if (p.id !== postId) return p;
+                    return {
+                      ...p,
+                      comments: [...(p.comments || []), newComment],
+                    };
+                  })
+                ),
+              };
+            }
+          );
+        });
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "فشل إضافة التعليق"
+      );
+    },
+  });
+
+  const handleCommentSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commentText.trim() || commentMutation.isPending) return;
+    commentMutation.mutate(commentText);
   };
 
   return (
@@ -46,7 +86,7 @@ export default function CommentForm({ postId, user }: CommentFormProps) {
             type="text"
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
-            disabled={isPending}
+            disabled={commentMutation.isPending}
             placeholder="اكتب تعليقاً..."
             className=" w-full flex-1 h-9 bg-secondary px-4 pl-10 rounded-full text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-60"
             dir="auto"
@@ -54,7 +94,7 @@ export default function CommentForm({ postId, user }: CommentFormProps) {
 
           <button
             type="submit"
-            disabled={isPending || !commentText.trim()}
+            disabled={commentMutation.isPending || !commentText.trim()}
             className="absolute left-3 top-1/2 -translate-y-1/2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
             <Send className="h-5 w-5 text-primary" />

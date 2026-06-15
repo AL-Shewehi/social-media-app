@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Loader2, ThumbsUp } from "lucide-react";
 import Link from "next/link";
 import { fetchPostLikesAction } from "@/features/feed/actions";
+import { useQuery } from "@tanstack/react-query";
 import type { Profile } from "@/types/database.types";
 
 interface LikeItem {
@@ -26,35 +26,15 @@ interface LikesDialogProps {
 }
 
 export default function LikesDialog({ postId, open, onOpenChange }: LikesDialogProps) {
-  const [likes, setLikes] = useState<LikeItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
- useEffect(() => {
-    let isMounted = true; 
-
-    if (open) {
-      const loadLikes = async () => {
-        setIsLoading(true);
-        const result = await fetchPostLikesAction(postId);
-        
-        if (isMounted) {
-          if (result.success && result.data) {
-            setLikes(result.data);
-          } else {
-            setLikes([]); 
-          }
-          setIsLoading(false);
-        }
-      };
-      loadLikes();
-    } else {
-      setLikes([]);
-    }
-
-    return () => {
-      isMounted = false; 
-    };
-  }, [open, postId]);
+  const { data: likes, isLoading } = useQuery({
+    queryKey: ["likes", postId],
+    queryFn: async () => {
+      const result = await fetchPostLikesAction(postId);
+      if (!result.success) throw new Error(result.error);
+      return (result.data ?? []) as LikeItem[];
+    },
+    enabled: open,
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -76,12 +56,12 @@ export default function LikesDialog({ postId, open, onOpenChange }: LikesDialogP
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-          ) : likes.length > 0 ? (
+          ) : likes && likes.length > 0 ? (
             <div className="space-y-1">
               {likes.map((like) => {
                 const profile = like.profile;
                 const fallback = profile?.full_name?.charAt(0).toUpperCase() || "?";
-                
+
                 return (
                   <div key={like.id} className="flex items-center gap-3 p-2 hover:bg-secondary/50 rounded-lg transition">
                     <Link href={`/profile/${profile?.id}`}>

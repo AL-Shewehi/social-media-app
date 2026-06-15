@@ -117,6 +117,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
               initialPosts={formattedPosts || []}
               currentUserId={currentUser.id}
               currentUserProfile={targetProfile}
+              profileUserId={profileUserId}
             />
           </FeedErrorBoundary>
         </div>

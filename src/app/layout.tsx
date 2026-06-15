@@ -9,8 +9,8 @@ import { Toaster } from "@/components/ui/sonner";
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Social Media App",
-  description: "A social media application",
+  title: "Socially",
+  description: "تواصل مع الأصدقاء والعالم من حولك.",
 };
 
 export default function RootLayout({

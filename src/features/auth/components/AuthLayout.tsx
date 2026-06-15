@@ -12,7 +12,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
       <div className="flex-1 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-extrabold text-primary mb-2">Social Media App</h1>
+          <h1 className="text-4xl font-extrabold text-primary mb-2">Socially</h1>
           <p className="text-foreground">تواصل مع الأصدقاء والعالم من حولك.</p>
         </div>
         

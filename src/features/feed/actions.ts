@@ -212,6 +212,52 @@ export async function fetchPostLikesAction(postId: string) {
 }
 
 
+export async function fetchProfilePostsAction(profileUserId: string, cursor?: string) {
+  return withErrorHandling(async () => {
+    const { supabase, user } = await requireUser();
+
+    const pageSize = 15;
+
+    let query = supabase
+      .from("posts")
+      .select(`
+        id, content, created_at, user_id, image_url, shared_post_id,
+        profiles!posts_user_id_fkey (id, full_name, avatar_url),
+        comments (id, content, created_at, user_id, profiles (id, full_name, avatar_url)),
+        likes (count),
+        shared_post:posts!shared_post_id (
+          id, content, image_url,
+          profiles!posts_user_id_fkey (id, full_name, avatar_url)
+        )
+      `)
+      .eq("user_id", profileUserId)
+      .order("created_at", { ascending: false })
+      .order("created_at", { referencedTable: "comments", ascending: true })
+      .limit(pageSize);
+
+    if (cursor) {
+      query = query.lt("created_at", cursor);
+    }
+
+    const { data: posts, error } = await query;
+    if (error) throw error;
+
+    const postIds = posts?.map((p) => p.id) || [];
+    let likedPostIds = new Set<string>();
+
+    if (postIds.length > 0) {
+      const { data: userLikes } = await supabase
+        .from("likes")
+        .select("post_id")
+        .eq("user_id", user.id)
+        .in("post_id", postIds);
+      likedPostIds = new Set(userLikes?.map((l) => l.post_id) || []);
+    }
+
+    return formatPosts(posts || [], likedPostIds);
+  }, "حدث خطأ في جلب منشورات المستخدم");
+}
+
 export async function fetchMorePostsAction(cursor: string | undefined, allowedUserIds: string[]) {
   return withErrorHandling(async () => {
     const { supabase, user } = await requireUser();
