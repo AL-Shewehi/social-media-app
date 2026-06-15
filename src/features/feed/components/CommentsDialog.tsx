@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogDescription
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { MessageSquare } from "lucide-react";
 import type { Comment, Profile } from "@/types/database.types";
@@ -29,14 +29,19 @@ interface CommentsDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export default function CommentsDialog({ trigger, post, user, open, onOpenChange }: CommentsDialogProps) {
+export default function CommentsDialog({
+  trigger,
+  post,
+  user,
+  open,
+  onOpenChange,
+}: CommentsDialogProps) {
   const authorName = post.profiles?.full_name || "مستخدم مجهول";
   const fallbackLetter = authorName.charAt(0).toUpperCase();
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden bg-card border border-border rounded-xl flex flex-col max-h-[85vh]">
         <DialogHeader className="p-4 border-b flex items-center justify-center">
           <DialogTitle className="text-center font-bold text-base flex items-center gap-2">
@@ -44,7 +49,8 @@ export default function CommentsDialog({ trigger, post, user, open, onOpenChange
             <span>منشور {authorName}</span>
           </DialogTitle>
           <DialogDescription className="sr-only">
-            صندوق عرض التعليقات والتفاعل مع منشور المستخدم {post.profiles?.full_name}
+            صندوق عرض التعليقات والتفاعل مع منشور المستخدم{" "}
+            {post.profiles?.full_name}
           </DialogDescription>
         </DialogHeader>
 
@@ -64,7 +70,6 @@ export default function CommentsDialog({ trigger, post, user, open, onOpenChange
                 {post.content}
               </p>
             </div>
-
           </div>
           {post.image_url && (
             <div className="w-full border-t border-b border-border/50 bg-secondary/20 flex items-center justify-center max-h-[500px] overflow-hidden">

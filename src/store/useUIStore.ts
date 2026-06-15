@@ -7,6 +7,10 @@ interface UIState {
     openCreatePost: () => void,
     closeCreatePost: () => void
 
+    // online state
+    isOnline: boolean,
+    setIsOnline: (isOnline: boolean) => void,
+
     // mobile side bar state
     isMobileSidebarOpen: boolean,
     setMobileSidebarOpen: (open: boolean) => void;
@@ -23,6 +27,9 @@ export const useUIStore = create<UIState>((set) => ({
     setCreatePostOpen: (open) => set({ isCreatePostOpen: open }),
     openCreatePost: () => set({ isCreatePostOpen: true }),
     closeCreatePost: () => set({ isCreatePostOpen: false }),
+
+    isOnline: true,
+    setIsOnline: (isOnline) => set({ isOnline }),
 
     // الدالات المتحكمة في الـ Mobile Sidebar
     setMobileSidebarOpen: (open) => set({ isMobileSidebarOpen: open }),

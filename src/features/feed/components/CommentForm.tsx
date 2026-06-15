@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { createCommentAction } from "../actions";
+import { createCommentAction } from "@/features/feed/actions";
 import { toast } from "sonner";
 import { Send } from "lucide-react";
 import type { Profile } from "@/types/database.types";

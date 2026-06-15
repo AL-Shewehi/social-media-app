@@ -14,9 +14,10 @@ import {
 import { loginSchema } from "@/lib/zod";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../hooks/useAuth";
+import { useAuth } from "@/features/auth/hooks/useAuth";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react";
 
-// هنا هنستخدم Zod عشان نضمن ان الداتا اللي داخلة صحيحة
 export type LoginFormValues = z.infer<typeof loginSchema>;
 
 export default function LoginForm() {
@@ -31,12 +32,21 @@ export default function LoginForm() {
   });
 
   const onSubmit = async (values: LoginFormValues) => {
-    const result = await loginUser(values);
-    if (result) {
-      router.push("/");
-      router.refresh();
+    try {
+      const result = await loginUser(values);
+      if (result) {
+        toast.success("تم تسجيل الدخول بنجاح! 👋");
+        router.push("/");
+        router.refresh();
+      }
+    } catch (err) {
+      console.error("Login error:", err);
+      toast.error("حدث خطأ غير متوقع أثناء تسجيل الدخول.");
     }
   };
+
+  const isButtonDisabled = isSubmitting || isLoading;
+
   return (
     <Card>
       <CardHeader>
@@ -58,6 +68,7 @@ export default function LoginForm() {
               type="email"
               placeholder="البريد الإلكتروني"
               className="w-full h-12"
+              disabled={isButtonDisabled}
             />
             {errors.email && (
               <p className="text-sm text-red-500">{errors.email.message}</p>
@@ -69,6 +80,7 @@ export default function LoginForm() {
               type="password"
               placeholder="كلمة المرور"
               className="w-full h-12"
+              disabled={isButtonDisabled}
             />
             {errors.password && (
               <p className="text-sm text-red-500">{errors.password.message}</p>
@@ -77,25 +89,31 @@ export default function LoginForm() {
           <div className="flex flex-col gap-4 mt-2 mb-8">
             <Button
               type="submit"
-              rounded="full"
               size="lg"
-              className="w-full h-10"
-              disabled={isSubmitting}
+              className="w-full h-10 gap-2 font-semibold"
+              disabled={isButtonDisabled}
             >
-              {isSubmitting ? "جاري تسجيل الدخول..." : "تسجيل الدخول"}
+              {isButtonDisabled ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>جاري تسجيل الدخول...</span>
+                </>
+              ) : (
+                <span>تسجيل الدخول</span>
+              )}
             </Button>
             <Link href="/reset-password" className="text-center">
-              <p className="text-sm text-foreground cursor-pointer">
+              <p className="text-sm text-foreground cursor-pointer hover:underline">
                 هل نسيت كلمة السر ؟
               </p>
             </Link>
           </div>
           <Button
             variant="outline"
-            rounded="full"
             size="lg"
             asChild
             className="w-full h-10"
+            disabled={isButtonDisabled}
           >
             <Link href="/register" className="text-center">
               تسجيل حساب جديد

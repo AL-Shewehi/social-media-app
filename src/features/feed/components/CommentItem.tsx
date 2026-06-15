@@ -1,7 +1,9 @@
 "use client";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Comment } from "@/types/database.types";
+import Link from "next/link";
+import { formatRelativeTime } from "@/lib/formatDate";
 
 interface CommentItemProps {
   comment: Comment;
@@ -13,17 +15,25 @@ export default function CommentItem({ comment }: CommentItemProps) {
 
   return (
     <div className="flex items-start gap-2 text-right">
-      <Avatar className="h-8 w-8 border mt-0.5">
-        <AvatarFallback className="bg-neutral-500 text-white font-bold text-xs">
-          {fallbackLetter}
-        </AvatarFallback>
-      </Avatar>
+      <Link href={`/profile/${comment.user_id}`}>
+        <Avatar className="h-8 w-8 border mt-0.5 hover:opacity-80 transition cursor-pointer">
+          {comment.profiles?.avatar_url && (
+            <AvatarImage src={comment.profiles.avatar_url} alt={cAuthor} />
+          )}
+          <AvatarFallback className="bg-neutral-500 text-white font-bold text-xs">
+            {fallbackLetter}
+          </AvatarFallback>
+        </Avatar>
+      </Link>
 
       <div className="flex flex-col max-w-[85%]">
         <div className="bg-secondary px-3 py-2 rounded-2xl">
-          <h5 className="font-semibold text-xs text-foreground hover:underline cursor-pointer">
+          <Link 
+            href={`/profile/${comment.user_id}`} 
+            className="font-semibold text-xs text-foreground hover:underline cursor-pointer block"
+          >
             {cAuthor}
-          </h5>
+          </Link>
           <p
             className="text-[13px] text-foreground mt-0.5 leading-relaxed wrap-break-word"
             dir="auto"
@@ -32,10 +42,7 @@ export default function CommentItem({ comment }: CommentItemProps) {
           </p>
         </div>
         <span className="text-[10px] text-muted-foreground px-2 mt-0.5">
-          {new Date(comment.created_at).toLocaleTimeString("ar-EG", {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
+          {formatRelativeTime(comment.created_at)}
         </span>
       </div>
     </div>

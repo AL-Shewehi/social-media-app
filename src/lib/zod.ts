@@ -19,7 +19,9 @@ export const signupSchema = z.object({
         }
         return age >= 18;
     }, "يجب أن يكون عمرك 18 عامًا على الأقل"),
-    gender: z.enum(["male", "female"], "الرجاء اختيار جنسك"),
+   gender: z.enum(["male", "female"], { 
+  message: "يرجى اختيار الجنس"
+}),
     email: z.string().email("البريد الالكتروني غير صحيح"),
     password: z.string().min(6, "كلمة المرور يجب أن تكون 6 أحرف على الأقل"),
 });

@@ -17,23 +17,27 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/types/database.types";
+import type { NotificationItem } from "./NotificationsDropdown";
 import { useUIStore } from "@/store/useUIStore";
 import { useDebounce } from "@/hooks/useDebounce";
-import { searchProfilesAction } from "@/features/search/actions";
 import { useState, useEffect, useRef } from "react";
+import NotificationsDropdown from "./NotificationsDropdown";
 
 interface NavbarProps {
   user: Profile | null;
+  onSearchAction: (query: string) => Promise<{ success: boolean; data?: Profile[]; error?: string }>;
+  onFetchNotifications: () => Promise<{ success: boolean; data?: NotificationItem[]; error?: string }>;
+  onMarkNotificationsAsRead: () => Promise<{ success: boolean; error?: string }>;
 }
 
-export default function Navbar({ user }: NavbarProps) {
+export default function Navbar({ user, onSearchAction, onFetchNotifications, onMarkNotificationsAsRead }: NavbarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const toggleMobileSidebar = useUIStore((state) => state.toggleMobileSidebar);
 
   // ─── States إدارة البحث ───
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<Profile[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -44,7 +48,6 @@ export default function Navbar({ user }: NavbarProps) {
   const fallbackLetter = Author.charAt(0).toUpperCase();
   const avatar = user?.avatar_url;
 
-  // ─── مراقبة الـ Debounced Query وتشغيل الأكشن ───
   useEffect(() => {
     const fetchResults = async () => {
       if (debouncedQuery.trim().length < 2) {
@@ -54,17 +57,17 @@ export default function Navbar({ user }: NavbarProps) {
       }
 
       setIsSearching(true);
-      const result = await searchProfilesAction(debouncedQuery);
+      const result = await onSearchAction(debouncedQuery);
       setIsSearching(false);
 
-      if (result.success) {
+      if (result.success && result.data) {
         setSearchResults(result.data);
         setIsDropdownOpen(true);
       }
     };
 
     fetchResults();
-  }, [debouncedQuery]);
+  }, [debouncedQuery, onSearchAction]);
 
   // قفل القائمة المنسدلة لو اليوزر ضغط في أي مكان بره صندوق البحث
   useEffect(() => {
@@ -209,13 +212,13 @@ export default function Navbar({ user }: NavbarProps) {
           <MessageCircle className="h-5 w-5" />
         </Button>
 
-        <Button
-          variant="secondary"
-          size="icon"
-          className="rounded-full h-10 w-10 bg-secondary hover:bg-secondary/80 transition"
-        >
-          <Bell className="h-5 w-5" />
-        </Button>
+        {user && (
+          <NotificationsDropdown
+            currentUserId={user.id}
+            onFetchNotifications={onFetchNotifications}
+            onMarkAsRead={onMarkNotificationsAsRead}
+          />
+        )}
 
         <Link
           href={`/profile/${user?.id}`}

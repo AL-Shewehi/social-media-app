@@ -29,26 +29,33 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // غير مسجل → الصفحة الرئيسية فقط محمية
-  if (!user && request.nextUrl.pathname === "/") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
+
+  const authPages = ["/login", "/register", "/reset-password"];
+  const isAuthPage = authPages.includes(request.nextUrl.pathname);
+
+  // 1. مستخدم غير مسجل بيحاول يدخل صفحة محمية (الرئيسية، الأصدقاء، البروفايل، الخ..) -> اطرده للوجين
+  if (!user && !isAuthPage) {
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // مسجل → يمنع من صفحات Auth
-  const authPages = ["/login", "/register", "/reset-password"];
-  if (user && authPages.includes(request.nextUrl.pathname)) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url, {
-      headers: supabaseResponse.headers,
-    });
+  // 2. مستخدم مسجل بالفعل بيحاول يفتح صفحة تسجيل الدخول -> رجعه للرئيسية
+  if (user && isAuthPage) {
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
   return supabaseResponse;
 }
 
 export const config = {
-  matcher: ["/", "/login", "/register", "/reset-password"],
-};
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - الصور والملفات الثابتة
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
+}

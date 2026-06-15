@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { 
   UserPlus, 
@@ -32,7 +32,7 @@ interface FriendshipButtonProps {
     receiver_id: string;
     status: "pending" | "accepted" | "declined";
   } | null;
-  isCardView?: boolean; // خاصية التحكم في شكل الزرار (كارت فيسبوك أم بروفايل عادي)
+  isCardView?: boolean;
 }
 
 export default function FriendshipButton({ 
@@ -45,82 +45,95 @@ export default function FriendshipButton({
   const [friendship, setFriendship] = useState(initialFriendship);
   const [isPending, setIsPending] = useState(false);
 
-  // 1. أكشن إرسال الطلب
+  useEffect(() => {
+    setFriendship(initialFriendship);
+  }, [initialFriendship]);
+
+  // اكشن ارسال الطلب
   const handleSendRequest = async () => {
     setIsPending(true);
+    
+    setFriendship({
+      id: "__optimistic__", 
+      sender_id: currentUserId,
+      receiver_id: targetUserId,
+      status: "pending"
+    });
+
     const result = await sendFriendRequestAction(targetUserId);
     setIsPending(false);
 
     if (result.success) {
       toast.success("تم إرسال طلب الصداقة بنجاح! ✉️");
-      setFriendship({
-        id: "", // مؤقت لحين إعادة جلب البيانات
-        sender_id: currentUserId,
-        receiver_id: targetUserId,
-        status: "pending"
-      });
     } else {
+      // Rollback لو حصل مشكلة
+      setFriendship(initialFriendship);
       toast.error(result.error || "فشل إرسال طلب الصداقة");
     }
   };
 
-  // 2. أكشن قبول الطلب
+  // أكشن قبول الطلب
   const handleAcceptRequest = async () => {
     if (!friendship?.id) return;
+    
+    if (friendship.id === "__optimistic__") {
+      toast.info("جاري المعالجة، يرجى الانتظار لحظة...");
+      return;
+    }
+
     setIsPending(true);
     const result = await acceptFriendRequestAction(friendship.id, friendship.sender_id);
     setIsPending(false);
 
     if (result.success) {
       toast.success("تهانينا! أصبحتما أصدقاء الآن 🤝");
-      setFriendship({
-        ...friendship,
-        status: "accepted"
-      });
+      setFriendship({ ...friendship, status: "accepted" });
     } else {
       toast.error(result.error || "فشل قبول طلب الصداقة");
     }
   };
 
-  // 3. أكشن إلغاء / رفض / حذف الصداقة
+  // أكشن إلغاء / رفض / حذف الصداقة
   const handleRemoveOrCancel = async () => {
     if (!friendship?.id) return;
+    
+    if (friendship.id === "__optimistic__") {
+      toast.info("جاري المعالجة، يرجى الانتظار لحظة...");
+      return;
+    }
+
     setIsPending(true);
     const result = await cancelOrRemoveFriendshipAction(friendship.id, targetUserId);
     setIsPending(false);
 
     if (result.success) {
-      toast.success("تم تحديث قائمة الأصدقاء بنجاح");
-      setFriendship(null); // إعادة الحالة لـ لا يوجد علاقة
+      toast.success("تم تحديث القائمة بنجاح");
+      setFriendship(null); 
     } else {
       toast.error(result.error || "حدث خطأ أثناء معالجة الطلب");
     }
   };
 
-  // حالة التحميل (Loading)
   if (isPending) {
     return (
-      <Button disabled className={`gap-2 rounded-lg font-medium ${isCardView ? "w-full mt-3" : "mb-2 min-w-[120px]"}`}>
+      <Button disabled className={`gap-2 rounded-lg font-medium ${isCardView ? "w-full mt-3" : "mb-2 min-w-30"}`}>
         <Loader2 className="h-4 w-4 animate-spin" />
         {isCardView ? null : <span>جاري المعالجة...</span>}
       </Button>
     );
   }
 
+  // Card View
   if (isCardView) {
-    
-    // الحالة الأولى: مفيش علاقة
     if (!friendship) {
       return (
-        <Button onClick={handleSendRequest} className="w-full bg-[#0866ff] hover:bg-[#0866ff]/90 text-white rounded-md mt-3 font-bold">
+        <Button onClick={handleSendRequest} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-md mt-3 font-bold">
           إضافة صديق
         </Button>
       );
     }
 
-    // الحالة الثانية: العلاقة معلقة (Pending)
     if (friendship.status === "pending") {
-      // أنا اللي بعت الطلب
       if (friendship.sender_id === currentUserId) {
         return (
           <Button onClick={handleRemoveOrCancel} className="w-full bg-secondary hover:bg-secondary/80 text-foreground rounded-md mt-3 font-bold">
@@ -128,11 +141,9 @@ export default function FriendshipButton({
           </Button>
         );
       }
-      
-      // هو اللي بعتلي الطلب (تأكيد / حذف)
       return (
         <div className="flex flex-col gap-2 w-full mt-3">
-          <Button onClick={handleAcceptRequest} className="w-full bg-[#0866ff] hover:bg-[#0866ff]/90 text-white rounded-md font-bold">
+          <Button onClick={handleAcceptRequest} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground rounded-md font-bold">
             تأكيد
           </Button>
           <Button onClick={handleRemoveOrCancel} className="w-full bg-[#e4e6eb] hover:bg-[#d8dadf] text-black rounded-md font-bold dark:bg-[#3a3b3c] dark:text-[#e4e6eb]">
@@ -142,7 +153,6 @@ export default function FriendshipButton({
       );
     }
 
-    // الحالة الثالثة: أصدقاء (Accepted)
     if (friendship.status === "accepted") {
       return (
         <Button onClick={handleRemoveOrCancel} className="w-full bg-secondary hover:bg-destructive/10 hover:text-destructive text-foreground rounded-md mt-3 font-bold transition">
@@ -152,13 +162,10 @@ export default function FriendshipButton({
     }
   }
 
-  // ==========================================
-  // ─── 2. التصميم الافتراضي (لصفحة البروفايل) ───
-  // ==========================================
-  
+  // التصميم الافتراضي
   if (!friendship) {
     return (
-      <Button onClick={handleSendRequest} className="gap-2 rounded-lg font-medium shadow-sm mb-2 cursor-pointer bg-[#0866ff] text-white hover:bg-[#0866ff]/90">
+      <Button onClick={handleSendRequest} className="gap-2 rounded-lg font-medium shadow-sm mb-2 cursor-pointer bg-primary text-primary-foreground hover:bg-primary/90">
         <UserPlus className="h-4 w-4" />
         <span>إضافة صديق</span>
       </Button>
@@ -177,7 +184,7 @@ export default function FriendshipButton({
     
     return (
       <div className="flex items-center gap-2 mb-2">
-        <Button onClick={handleAcceptRequest} className="gap-2 rounded-lg font-medium shadow-sm bg-[#0866ff] text-white hover:bg-[#0866ff]/90 cursor-pointer">
+        <Button onClick={handleAcceptRequest} className="gap-2 rounded-lg font-medium shadow-sm bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer">
           <UserCheck className="h-4 w-4" />
           <span>تأكيد الطلب</span>
         </Button>

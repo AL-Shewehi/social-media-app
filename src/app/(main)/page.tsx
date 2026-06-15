@@ -1,4 +1,4 @@
-import { requireUser } from "@/features/auth/actions";
+import { requireUser } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/supabase/server";
 import CreatePost from "@/features/feed/components/CreatePost";
 import FeedList from "@/features/feed/components/FeedList";

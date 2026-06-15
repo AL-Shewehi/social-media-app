@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Code Review V3 — Deep Dive Report</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    pre, code { font-family: 'JetBrains Mono', monospace; direction: ltr; text-align: left; }
+    .toc-link { transition: all 0.15s ease; }
+    .toc-link:hover { transform: translateX(-4px); }
+    .severity-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+    .anchor-offset { scroll-margin-top: 6rem; }
+    pre::-webkit-scrollbar { height: 6px; }
+    pre::-webkit-scrollbar-track { background: transparent; }
+    pre::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+    @media (prefers-color-scheme: dark) {
+      body { background-color: #0f172a; color: #e2e8f0; }
+      .card-dark { background-color: #1e293b; border-color: #334155; }
+      .code-dark { background-color: #0b1121; }
+    }
+  </style>
+</head>
+<body class="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 antialiased">
+
+  <!-- ═══ HEADER ═══ -->
+  <header class="sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 shadow-sm">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
+      <div>
+        <h1 class="text-lg sm:text-xl font-extrabold text-slate-900 dark:text-white tracking-tight">
+          📋 Code Review V3
+        </h1>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+          2026-06-08 · 24 issues found · 59 source files audited
+        </p>
+      </div>
+      <div class="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>3 Critical</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span>5 High</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>7 Medium</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>6 Low</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-violet-500"></span>3 Arch</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-12">
+
+    <!-- ═══ EXECUTIVE SUMMARY ═══ -->
+    <section id="executive-summary" class="anchor-offset">
+      <div class="bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-950/30 dark:to-orange-950/20 border border-red-200 dark:border-red-800/40 rounded-2xl p-6 sm:p-8 shadow-sm">
+        <h2 class="text-2xl font-extrabold text-slate-900 dark:text-white mb-1">🎯 Executive Summary</h2>
+        <p class="text-sm text-slate-600 dark:text-slate-400 mb-6">Top 3 most critical refactoring tasks to start with immediately</p>
+
+        <div class="grid gap-4 sm:gap-5">
+          <!-- Priority 1 -->
+          <div class="bg-white dark:bg-slate-800/60 border border-red-300 dark:border-red-700/50 rounded-xl p-4 sm:p-5 shadow-sm">
+            <div class="flex items-start gap-3">
+              <span class="flex items-center justify-center w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 font-extrabold text-sm shrink-0 mt-0.5">1</span>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">CRITICAL</span>
+                  <h3 class="font-bold text-slate-900 dark:text-white">router.refresh() on every realtime event kills performance</h3>
+                </div>
+                <p class="text-sm text-slate-600 dark:text-slate-400 mt-1"><strong class="text-slate-800 dark:text-slate-200">Current behavior:</strong> Full-page flash on every like/comment. Users will perceive the app as broken. Fix this before any feature work.</p>
+                <p class="text-xs text-slate-500 dark:text-slate-500 mt-1.5 font-mono">src/features/feed/components/RealtimeFeedList.tsx:47-50,57,62</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Priority 2 -->
+          <div class="bg-white dark:bg-slate-800/60 border border-red-300 dark:border-red-700/50 rounded-xl p-4 sm:p-5 shadow-sm">
+            <div class="flex items-start gap-3">
+              <span class="flex items-center justify-center w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 font-extrabold text-sm shrink-0 mt-0.5">2</span>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">CRITICAL</span>
+                  <h3 class="font-bold text-slate-900 dark:text-white">Optimistic UI missing for likes — like button feels unresponsive</h3>
+                </div>
+                <p class="text-sm text-slate-600 dark:text-slate-400 mt-1"><strong class="text-slate-800 dark:text-slate-200">Current behavior:</strong> Like toggle triggers both a server roundtrip and a realtime refresh — double the cost. Combined with #C1, user sees no feedback until the server responds.</p>
+                <p class="text-xs text-slate-500 dark:text-slate-500 mt-1.5 font-mono">src/features/feed/components/PostCard.tsx:56-69</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Priority 3 -->
+          <div class="bg-white dark:bg-slate-800/60 border border-red-300 dark:border-red-700/50 rounded-xl p-4 sm:p-5 shadow-sm">
+            <div class="flex items-start gap-3">
+              <span class="flex items-center justify-center w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 font-extrabold text-sm shrink-0 mt-0.5">3</span>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">CRITICAL</span>
+                  <h3 class="font-bold text-slate-900 dark:text-white">Middleware doesn't protect /profile/[id], /friends, and other routes</h3>
+                </div>
+                <p class="text-sm text-slate-600 dark:text-slate-400 mt-1"><strong class="text-slate-800 dark:text-slate-200">Security gap:</strong> If a developer adds a new page and forgets <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">redirect("/login")</code>, unauthenticated users can access it. Fix the matcher today.</p>
+                <p class="text-xs text-slate-500 dark:text-slate-500 mt-1.5 font-mono">src/middleware.ts:52-54</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Wins -->
+        <div class="mt-6 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/30 rounded-xl p-4">
+          <h4 class="font-bold text-emerald-800 dark:text-emerald-300 text-sm flex items-center gap-1.5">⚡ Quick wins (do in parallel)</h4>
+          <ul class="mt-2 space-y-1 text-sm text-emerald-700 dark:text-emerald-400">
+            <li class="flex items-center gap-2">· Delete 5 empty stubs + <code class="text-xs bg-emerald-100 dark:bg-emerald-900/30 px-1 py-0.5 rounded">components/components/</code> directory</li>
+            <li class="flex items-center gap-2">· Fix <code class="text-xs bg-emerald-100 dark:bg-emerald-900/30 px-1 py-0.5 rounded">as any</code> in friends/page.tsx</li>
+            <li class="flex items-center gap-2">· Fix <code class="text-xs bg-emerald-100 dark:bg-emerald-900/30 px-1 py-0.5 rounded">autherName</code> typo → <code class="text-xs bg-emerald-100 dark:bg-emerald-900/30 px-1 py-0.5 rounded">authorName</code></li>
+            <li class="flex items-center gap-2">· Static import in useAuth (remove dynamic <code class="text-xs bg-emerald-100 dark:bg-emerald-900/30 px-1 py-0.5 rounded">import()</code>)</li>
+            <li class="flex items-center gap-2">· Remove <code class="text-xs bg-emerald-100 dark:bg-emerald-900/30 px-1 py-0.5 rounded">forcedTheme: "light"</code> to allow dark mode</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ TABLE OF CONTENTS ═══ -->
+    <section id="table-of-contents" class="anchor-offset">
+      <h2 class="text-xl font-extrabold text-slate-900 dark:text-white mb-4">📑 Table of Contents</h2>
+      <div class="grid sm:grid-cols-2 gap-2">
+        <a href="#c1" class="toc-link flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-700/50 transition">
+          <span class="severity-dot bg-red-500"></span>
+          <span class="font-medium text-sm">#C1 — router.refresh() on every realtime event</span>
+        </a>
+        <a href="#c2" class="toc-link flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-700/50 transition">
+          <span class="severity-dot bg-red-500"></span>
+          <span class="font-medium text-sm">#C2 — Optimistic UI missing for likes</span>
+        </a>
+        <a href="#c3" class="toc-link flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 hover:border-red-300 dark:hover:border-red-700/50 transition">
+          <span class="severity-dot bg-red-500"></span>
+          <span class="font-medium text-sm">#C3 — Middleware doesn't protect routes</span>
+        </a>
+        <a href="#h1" class="toc-link flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 hover:border-orange-300 dark:hover:border-orange-700/50 transition">
+          <span class="severity-dot bg-orange-500"></span>
+          <span class="font-medium text-sm">#H1 — Duplicated try-catch-return pattern</span>
+        </a>
+        <a href="#h2" class="toc-link flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 hover:border-orange-300 dark:hover:border-orange-700/50 transition">
+          <span class="severity-dot bg-orange-500"></span>
+          <span class="font-medium text-sm">#H2 — Empty stubs across 4 features</span>
+        </a>
+        <a href="#h3" class="toc-link flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 hover:border-orange-300 dark:hover:border-orange-700/50 transition">
+          <span class="severity-dot bg-orange-500"></span>
+          <span class="font-medium text-sm">#H3 — Empty string ID in FriendshipButton</span>
+        </a>
+        <a href="#h4" class="toc-link flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 hover:border-orange-300 dark:hover:border-orange-700/50 transition">
+          <span class="severity-dot bg-orange-500"></span>
+          <span class="font-medium text-sm">#H4 — Hardcoded colors (DRY/theming)</span>
+        </a>
+        <a href="#h5" class="toc-link flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 hover:border-orange-300 dark:hover:border-orange-700/50 transition">
+          <span class="severity-dot bg-orange-500"></span>
+          <span class="font-medium text-sm">#H5 — forcedTheme: "light" kills dark mode</span>
+        </a>
+        <a href="#m1" class="toc-link flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-700/50 transition">
+          <span class="severity-dot bg-amber-400"></span>
+          <span class="font-medium text-sm">#M1 — Like query N+1 over-fetch</span>
+        </a>
+        <a href="#m2" class="toc-link flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-700/50 transition">
+          <span class="severity-dot bg-amber-400"></span>
+          <span class="font-medium text-sm">#M2 — No pagination on feed</span>
+        </a>
+        <a href="#m3" class="toc-link flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-700/50 transition">
+          <span class="severity-dot bg-amber-400"></span>
+          <span class="font-medium text-sm">#M3 — CommentsDialog dual prop sources</span>
+        </a>
+        <a href="#m4" class="toc-link flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-700/50 transition">
+          <span class="severity-dot bg-amber-400"></span>
+          <span class="font-medium text-sm">#M4 — normalizeProfile duplicated in 3 files</span>
+        </a>
+        <a href="#m5" class="toc-link flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-700/50 transition">
+          <span class="severity-dot bg-amber-400"></span>
+          <span class="font-medium text-sm">#M5 — Whitespace in select string</span>
+        </a>
+        <a href="#m6" class="toc-link flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-700/50 transition">
+          <span class="severity-dot bg-amber-400"></span>
+          <span class="font-medium text-sm">#M6 — friend.profile as any bypasses TS</span>
+        </a>
+        <a href="#m7" class="toc-link flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 hover:border-amber-300 dark:hover:border-amber-700/50 transition">
+          <span class="severity-dot bg-amber-400"></span>
+          <span class="font-medium text-sm">#M7 — Dynamic import in useAuth</span>
+        </a>
+        <a href="#l1" class="toc-link flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700/50 transition">
+          <span class="severity-dot bg-blue-500"></span>
+          <span class="font-medium text-sm">#L1 — EditProfileDialog inline type</span>
+        </a>
+        <a href="#l2" class="toc-link flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700/50 transition">
+          <span class="severity-dot bg-blue-500"></span>
+          <span class="font-medium text-sm">#L2 — Misleading cursor-pointer</span>
+        </a>
+        <a href="#l3" class="toc-link flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700/50 transition">
+          <span class="severity-dot bg-blue-500"></span>
+          <span class="font-medium text-sm">#L3 — Sidebar index as key</span>
+        </a>
+        <a href="#l4" class="toc-link flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700/50 transition">
+          <span class="severity-dot bg-blue-500"></span>
+          <span class="font-medium text-sm">#L4 — autherName typo</span>
+        </a>
+        <a href="#l5" class="toc-link flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700/50 transition">
+          <span class="severity-dot bg-blue-500"></span>
+          <span class="font-medium text-sm">#L5 — Login/Register page duplication</span>
+        </a>
+        <a href="#l6" class="toc-link flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-blue-700/50 transition">
+          <span class="severity-dot bg-blue-500"></span>
+          <span class="font-medium text-sm">#L6 — No Error Boundary</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- ═══ DETAILED ISSUES ═══ -->
+
+    <!-- ─── CRITICAL ─── -->
+    <section id="critical" class="anchor-offset space-y-6">
+      <div class="flex items-center gap-3">
+        <span class="text-sm font-bold px-3 py-1 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">CRITICAL</span>
+        <h2 class="text-xl font-extrabold text-slate-900 dark:text-white">🔴 Critical Issues</h2>
+      </div>
+
+      <!-- C1 -->
+      <div id="c1" class="anchor-offset bg-white dark:bg-slate-800/40 border border-red-200 dark:border-red-800/30 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">#C1 — router.refresh() on every realtime event kills performance</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 font-mono">src/features/feed/components/RealtimeFeedList.tsx:47-50,57,62</p>
+          </div>
+          <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 shrink-0">Critical</span>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">🔴 The Problem & Why It's Bad</h4>
+          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">INSERT</code>, <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">UPDATE</code>, and <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">DELETE</code> on <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">posts</code>, <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">likes</code>, and <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">comments</code> all call <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">router.refresh()</code>, triggering a <strong>full server roundtrip</strong>: the entire feed SQL query re-executes, all <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">PostCard</code> components re-render, and React hydration runs. This defeats the purpose of realtime — the user sees a full-page flash on every single like or comment.
+          </p>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">💡 Proposed Solution</h4>
+          <p class="text-sm text-slate-600 dark:text-slate-400">Use the realtime payload data for local state updates, and only call <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">router.refresh()</code> as a background fallback.</p>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">🛠️ Code Example</h4>
+          <pre class="code-dark bg-slate-950 text-slate-200 text-sm rounded-xl p-4 overflow-x-auto leading-relaxed"><code><span class="text-slate-500">// RealtimeFeedList.tsx — optimistic local state, no router.refresh() storm</span>
+<span class="text-blue-400">const</span> handleRealtimePostChange <span class="text-slate-400">=</span> <span class="text-blue-400">useCallback</span>(<span class="text-blue-400">async</span> (payload<span class="text-slate-400">:</span> <span class="text-amber-300">RealtimePostPayload</span>) <span class="text-slate-400">=&gt;</span> {
+  <span class="text-blue-400">if</span> (payload.eventType <span class="text-slate-400">===</span> <span class="text-green-300">"INSERT"</span>) {
+    <span class="text-blue-400">const</span> newPostUserId <span class="text-slate-400">=</span> (payload.new <span class="text-blue-400">as any</span>)<span class="text-slate-400">?.</span>user_id;
+    <span class="text-blue-400">if</span> (allowedUserIds <span class="text-slate-400">&amp;&amp;</span> newPostUserId <span class="text-slate-400">&amp;&amp;</span> <span class="text-slate-400">!</span>allowedUserIds.includes(newPostUserId)) <span class="text-blue-400">return</span>;
+    <span class="text-slate-500">// Append the new post from payload instead of full refresh</span>
+    setPosts(<span class="text-slate-400">(</span>prev<span class="text-slate-400">)</span> <span class="text-slate-400">=&gt;</span> [<span class="text-slate-400">{</span> ...<span class="text-slate-400">(</span>payload.new <span class="text-blue-400">as</span> <span class="text-amber-300">Post</span><span class="text-slate-400">)</span>, profiles<span class="text-slate-400">:</span> <span class="text-blue-400">null</span>, comments<span class="text-slate-400">:</span> [], likes<span class="text-slate-400">:</span> [] <span class="text-slate-400">}</span>, <span class="text-slate-400">...</span>prev]);
+  } <span class="text-blue-400">else if</span> (payload.eventType <span class="text-slate-400">===</span> <span class="text-green-300">"DELETE"</span>) {
+    setPosts(<span class="text-slate-400">(</span>prev<span class="text-slate-400">)</span> <span class="text-slate-400">=&gt;</span> prev.filter(<span class="text-slate-400">(</span>p<span class="text-slate-400">)</span> <span class="text-slate-400">=&gt;</span> p.id <span class="text-slate-400">!==</span> payload.old.id));
+  } <span class="text-blue-400">else</span> {
+    setPosts(<span class="text-slate-400">(</span>prev<span class="text-slate-400">)</span> <span class="text-slate-400">=&gt;</span> prev.map(<span class="text-slate-400">(</span>p<span class="text-slate-400">)</span> <span class="text-slate-400">=&gt;</span> (p.id <span class="text-slate-400">===</span> payload.new.id <span class="text-slate-400">?</span> <span class="text-slate-400">{</span> <span class="text-slate-400">...</span>p, <span class="text-slate-400">...</span><span class="text-slate-400">(</span>payload.new <span class="text-blue-400">as</span> <span class="text-amber-300">Post</span><span class="text-slate-400">)</span> <span class="text-slate-400">}</span> <span class="text-slate-400">:</span> p)));
+  }
+}, [allowedUserIds]);</code></pre>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">📏 Principle Applied</h4>
+          <span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">Performance — unnecessary re-render cascade</span>
+        </div>
+        <a href="#table-of-contents" class="inline-block text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">↑ Back to ToC</a>
+      </div>
+
+      <!-- C2 -->
+      <div id="c2" class="anchor-offset bg-white dark:bg-slate-800/40 border border-red-200 dark:border-red-800/30 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">#C2 — Optimistic UI missing — like/comment don't update until refresh</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 font-mono">src/features/feed/components/PostCard.tsx:56-69</p>
+          </div>
+          <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 shrink-0">Critical</span>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">🔴 The Problem & Why It's Bad</h4>
+          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">handleLikeToggle</code> sends the server action, but the UI (<code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">isLikedByMe</code>, <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">likesCount</code>) only updates after <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">revalidatePath</code> completes. Because <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">RealtimeFeedList</code> calls <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">router.refresh()</code> on likes changes, there's a <strong>race condition</strong>: the server action revalidates, then the realtime event fires refresh again. The user sees a delayed, jumpy UI.
+          </p>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">💡 Proposed Solution</h4>
+          <p class="text-sm text-slate-600 dark:text-slate-400">Optimistically toggle the like state locally, then reconcile on server response with rollback.</p>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">🛠️ Code Example</h4>
+          <pre class="code-dark bg-slate-950 text-slate-200 text-sm rounded-xl p-4 overflow-x-auto leading-relaxed"><code><span class="text-blue-400">const</span> handleLikeToggle <span class="text-slate-400">=</span> <span class="text-blue-400">async</span> () <span class="text-slate-400">=&gt;</span> {
+  <span class="text-blue-400">if</span> (isLikePending) <span class="text-blue-400">return</span>;
+  setIsLikePending(<span class="text-blue-400">true</span>);
+
+  <span class="text-slate-500">// Optimistic toggle</span>
+  setLocalLiked(<span class="text-slate-400">!</span>isLikedByMe);
+  setLocalLikesCount(<span class="text-slate-400">(</span>prev<span class="text-slate-400">)</span> <span class="text-slate-400">=&gt;</span> (isLikedByMe <span class="text-slate-400">?</span> prev <span class="text-slate-400">-</span> <span class="text-amber-300">1</span> <span class="text-slate-400">:</span> prev <span class="text-slate-400">+</span> <span class="text-amber-300">1</span>));
+
+  <span class="text-blue-400">const</span> result <span class="text-slate-400">=</span> <span class="text-blue-400">await</span> toggleLikeAction(post.id);
+  setIsLikePending(<span class="text-blue-400">false</span>);
+
+  <span class="text-blue-400">if</span> (<span class="text-slate-400">!</span>result.success) {
+    <span class="text-slate-500">// Rollback</span>
+    setLocalLiked(isLikedByMe);
+    setLocalLikesCount(post.likes<span class="text-slate-400">?.</span>length <span class="text-slate-400">??</span> <span class="text-amber-300">0</span>);
+    toast.error(result.error <span class="text-slate-400">||</span> <span class="text-green-300">"فشل تعديل الإعجاب"</span>);
+  }
+};</code></pre>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">📏 Principle Applied</h4>
+          <span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">UX — optimistic UI (missing user feedback loop)</span>
+        </div>
+        <a href="#table-of-contents" class="inline-block text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">↑ Back to ToC</a>
+      </div>
+
+      <!-- C3 -->
+      <div id="c3" class="anchor-offset bg-white dark:bg-slate-800/40 border border-red-200 dark:border-red-800/30 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">#C3 — Middleware doesn't protect /profile/[id], /friends, and other routes</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 font-mono">src/middleware.ts:52-54</p>
+          </div>
+          <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 shrink-0">Critical</span>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">🔴 The Problem & Why It's Bad</h4>
+          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            The middleware <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">matcher</code> only covers <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">"/"</code>, <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">"/login"</code>, <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">"/register"</code>, <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">"/reset-password"</code>. Routes like <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">/profile/[id]</code>, <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">/friends</code>, <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">/groups</code>, <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">/watch</code>, <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">/saved</code>, etc. rely on individual <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">redirect("/login")</code> calls inside each page. This is <strong>inconsistent</strong> — if a developer forgets the check in a new page, it's exposed to unauthenticated users.
+          </p>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">💡 Proposed Solution</h4>
+          <p class="text-sm text-slate-600 dark:text-slate-400">Use a prefix-based pattern matcher that covers all protected routes, then redirect <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">!user</code> inside middleware.</p>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">🛠️ Code Example</h4>
+          <pre class="code-dark bg-slate-950 text-slate-200 text-sm rounded-xl p-4 overflow-x-auto leading-relaxed"><code><span class="text-slate-500">// middleware.ts — protect all routes except public ones</span>
+<span class="text-blue-400">export</span> <span class="text-blue-400">const</span> config <span class="text-slate-400">=</span> {
+  matcher<span class="text-slate-400">:</span> [<span class="text-green-300">"/((?!_next|api|assets|login|register).*)"</span>],
+};
+
+<span class="text-slate-500">// Inside middleware function:</span>
+<span class="text-blue-400">if</span> (<span class="text-slate-400">!</span>user <span class="text-slate-400">&amp;&amp;</span> request.nextUrl.pathname <span class="text-slate-400">!==</span> <span class="text-green-300">"/login"</span> <span class="text-slate-400">&amp;&amp;</span> request.nextUrl.pathname <span class="text-slate-400">!==</span> <span class="text-green-300">"/register"</span>) {
+  <span class="text-blue-400">return</span> NextResponse.redirect(<span class="text-blue-400">new</span> URL(<span class="text-green-300">"/login"</span>, request.url));
+}</code></pre>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">📏 Principle Applied</h4>
+          <span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">Security — defense in depth (centralized vs. distributed auth)</span>
+        </div>
+        <a href="#table-of-contents" class="inline-block text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">↑ Back to ToC</a>
+      </div>
+    </section>
+
+    <!-- ─── HIGH ─── -->
+    <section id="high" class="anchor-offset space-y-6">
+      <div class="flex items-center gap-3">
+        <span class="text-sm font-bold px-3 py-1 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400">HIGH</span>
+        <h2 class="text-xl font-extrabold text-slate-900 dark:text-white">🟠 High Issues</h2>
+      </div>
+
+      <!-- H1 -->
+      <div id="h1" class="anchor-offset bg-white dark:bg-slate-800/40 border border-orange-200 dark:border-orange-800/30 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">#H1 — Every Server Action duplicates try-catch-return (DRY)</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 font-mono">auth/actions.ts · feed/actions.ts · friends/actions.ts · profile/actions.ts · search/actions.ts</p>
+          </div>
+          <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 shrink-0">High</span>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">🔴 The Problem & Why It's Bad</h4>
+          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            Every single Server Action follows the same 7-line boilerplate: <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">try { do work; return { success: true, data } } catch (error: unknown) { console.error("..."); return { success: false, error: error instanceof Error ? error.message : "..." } }</code>. That's <strong>13 actions × 7 lines = 91 lines of duplicated boilerplate</strong>. Adding a new action means copying this block again.
+          </p>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">💡 Proposed Solution</h4>
+          <p class="text-sm text-slate-600 dark:text-slate-400">Extract a <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">withErrorHandling</code> wrapper function.</p>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">🛠️ Code Example</h4>
+          <pre class="code-dark bg-slate-950 text-slate-200 text-sm rounded-xl p-4 overflow-x-auto leading-relaxed"><code><span class="text-slate-500">// lib/with-error-handling.ts</span>
+<span class="text-green-300">"use server"</span>;
+
+<span class="text-blue-400">export async function</span> <span class="text-amber-300">withErrorHandling</span><span class="text-slate-400">&lt;</span><span class="text-amber-300">T</span><span class="text-slate-400">&gt;</span>(
+  fn<span class="text-slate-400">:</span> () <span class="text-slate-400">=&gt;</span> <span class="text-amber-300">Promise</span><span class="text-slate-400">&lt;</span><span class="text-amber-300">T</span><span class="text-slate-400">&gt;</span>,
+  errorMessage<span class="text-slate-400">:</span> <span class="text-amber-300">string</span> <span class="text-slate-400">=</span> <span class="text-green-300">"حدث خطأ غير متوقع"</span>
+)<span class="text-slate-400">:</span> <span class="text-amber-300">Promise</span><span class="text-slate-400">&lt;</span>{ success<span class="text-slate-400">:</span> <span class="text-blue-400">true</span>; data<span class="text-slate-400">:</span> <span class="text-amber-300">T</span> } <span class="text-slate-400">|</span> { success<span class="text-slate-400">:</span> <span class="text-blue-400">false</span>; error<span class="text-slate-400">:</span> <span class="text-amber-300">string</span> }<span class="text-slate-400">&gt;</span> {
+  <span class="text-blue-400">try</span> {
+    <span class="text-blue-400">const</span> data <span class="text-slate-400">=</span> <span class="text-blue-400">await</span> fn();
+    <span class="text-blue-400">return</span> { success<span class="text-slate-400">:</span> <span class="text-blue-400">true</span>, data };
+  } <span class="text-blue-400">catch</span> (error<span class="text-slate-400">:</span> <span class="text-blue-400">unknown</span>) {
+    console.error(errorMessage, error);
+    <span class="text-blue-400">return</span> { success<span class="text-slate-400">:</span> <span class="text-blue-400">false</span>, error<span class="text-slate-400">:</span> error <span class="text-blue-400">instanceof</span> <span class="text-amber-300">Error</span> <span class="text-slate-400">?</span> error.message <span class="text-slate-400">:</span> errorMessage };
+  }
+}
+
+<span class="text-slate-500">// Usage in any action:</span>
+<span class="text-blue-400">export async function</span> <span class="text-amber-300">createPostAction</span>(content<span class="text-slate-400">:</span> <span class="text-amber-300">string</span>, imageUrl<span class="text-slate-400">?:</span> <span class="text-amber-300">string</span> <span class="text-slate-400">|</span> <span class="text-blue-400">null</span>) {
+  <span class="text-blue-400">return</span> <span class="text-amber-300">withErrorHandling</span>(<span class="text-blue-400">async</span> () <span class="text-slate-400">=&gt;</span> {
+    <span class="text-blue-400">const</span> { supabase, user } <span class="text-slate-400">=</span> <span class="text-blue-400">await</span> <span class="text-amber-300">requireUser</span>();
+    <span class="text-blue-400">const</span> { data, error } <span class="text-slate-400">=</span> <span class="text-blue-400">await</span> supabase<span class="text-slate-400">.</span><span class="text-amber-300">from</span>(<span class="text-green-300">"posts"</span>)<span class="text-slate-400">.</span><span class="text-amber-300">insert</span>({ <span class="text-slate-400">...</span> })<span class="text-slate-400">.</span><span class="text-amber-300">select</span>()<span class="text-slate-400">.</span><span class="text-amber-300">single</span>();
+    <span class="text-blue-400">if</span> (error) <span class="text-blue-400">throw</span> error;
+    <span class="text-amber-300">revalidatePath</span>(<span class="text-green-300">"/"</span>);
+    <span class="text-blue-400">return</span> data;
+  }, <span class="text-green-300">"حدث خطأ أثناء نشر المنشور"</span>);
+}</code></pre>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">📏 Principle Applied</h4>
+          <span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">DRY + SRP — error handling extracted to single responsibility</span>
+        </div>
+        <a href="#table-of-contents" class="inline-block text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">↑ Back to ToC</a>
+      </div>
+
+      <!-- H2 -->
+      <div id="h2" class="anchor-offset bg-white dark:bg-slate-800/40 border border-orange-200 dark:border-orange-800/30 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">#H2 — Empty stubs across 4 features (dead code)</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 font-mono">src/features/stories/ · src/features/chat/ · src/features/feed/hooks/usePosts.ts · src/features/profile/components/components/</p>
+          </div>
+          <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 shrink-0">High</span>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">🔴 The Problem & Why It's Bad</h4>
+          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            5 stubs (<code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">StoryCarousel.tsx</code>, <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">ChatWidget.tsx</code>, <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">useChat.ts</code>, <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">usePosts.ts</code>) + 1 empty file (<code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">AvatarUploader.tsx</code>) + 1 wrong directory (<code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">components/components/</code>). This is dead code that wastes developer attention, creates misleading imports, and breaks FSD conventions.
+          </p>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">💡 Proposed Solution</h4>
+          <p class="text-sm text-slate-600 dark:text-slate-400">Delete all 5 stubs + the empty file + the nested directory. Add them back when actually implementing (YAGNI — You Ain't Gonna Need It).</p>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">📏 Principle Applied</h4>
+          <span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">YAGNI — remove dead code; FSD — flat component structure</span>
+        </div>
+        <a href="#table-of-contents" class="inline-block text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">↑ Back to ToC</a>
+      </div>
+
+      <!-- H3 -->
+      <div id="h3" class="anchor-offset bg-white dark:bg-slate-800/40 border border-orange-200 dark:border-orange-800/30 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">#H3 — Empty string ID in FriendshipButton optimistic state causes hidden queries</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 font-mono">src/features/friends/components/FriendshipButton.tsx:57</p>
+          </div>
+          <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 shrink-0">High</span>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">🔴 The Problem & Why It's Bad</h4>
+          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            After sending a friend request, the optimistic state sets <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">id: ""</code>. If the user immediately clicks "إلغاء الطلب", <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">cancelOrRemoveFriendshipAction("", targetUserId)</code> executes: <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">DELETE FROM friendships WHERE id = '' ...</code>. This DELETE matches nothing, silently fails, and the UI state is corrupted (shows no-relationship but server still has pending).
+          </p>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">💡 Proposed Solution</h4>
+          <p class="text-sm text-slate-600 dark:text-slate-400">Use <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">null</code> instead of <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">""</code> and gate all actions on <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">friendship?.id</code> being truthy.</p>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">🛠️ Code Example</h4>
+          <pre class="code-dark bg-slate-950 text-slate-200 text-sm rounded-xl p-4 overflow-x-auto leading-relaxed"><code><span class="text-slate-500">// Before:</span>
+setFriendship({ id<span class="text-slate-400">:</span> <span class="text-green-300">""</span>, <span class="text-slate-400">...</span>, status<span class="text-slate-400">:</span> <span class="text-green-300">"pending"</span> });
+
+<span class="text-slate-500">// After — don't set optimistic state until server confirms:</span>
+setFriendship(<span class="text-blue-400">null</span>);
+
+<span class="text-slate-500">// OR use a unique optimistic sentinel:</span>
+setFriendship({ <span class="text-slate-400">...</span>friendship, id<span class="text-slate-400">:</span> <span class="text-green-300">"__optimistic__"</span>, status<span class="text-slate-400">:</span> <span class="text-green-300">"pending"</span> });
+<span class="text-slate-500">// And guard all actions:</span>
+<span class="text-blue-400">if</span> (<span class="text-slate-400">!</span>friendship<span class="text-slate-400">?.</span>id <span class="text-slate-400">||</span> friendship.id <span class="text-slate-400">===</span> <span class="text-green-300">"__optimistic__"</span>) <span class="text-blue-400">return</span>;</code></pre>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">📏 Principle Applied</h4>
+          <span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">Defensive programming — don't lie to the type system with empty strings</span>
+        </div>
+        <a href="#table-of-contents" class="inline-block text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">↑ Back to ToC</a>
+      </div>
+
+      <!-- H4 -->
+      <div id="h4" class="anchor-offset bg-white dark:bg-slate-800/40 border border-orange-200 dark:border-orange-800/30 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">#H4 — Hardcoded colors (#0866ff) in 3 components (theming/DRY)</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 font-mono">FriendshipButton.tsx · CreatePost.tsx · friends/page.tsx</p>
+          </div>
+          <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 shrink-0">High</span>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">🔴 The Problem & Why It's Bad</h4>
+          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            Facebook-blue <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">#0866ff</code> is hardcoded in hex across 3 files instead of CSS variables (<code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">--primary</code>). If the brand color changes, developers must grep and replace in 6+ locations. Also breaks dark mode compatibility.
+          </p>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">💡 Proposed Solution</h4>
+          <p class="text-sm text-slate-600 dark:text-slate-400">Replace with Tailwind semantic classes: <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">bg-primary text-primary-foreground hover:bg-primary/90</code>.</p>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">🛠️ Code Example</h4>
+          <pre class="code-dark bg-slate-950 text-slate-200 text-sm rounded-xl p-4 overflow-x-auto leading-relaxed"><code><span class="text-slate-500">// Before:</span>
+&lt;Button className=<span class="text-green-300">"bg-[#0866ff] hover:bg-[#0866ff]/90 text-white"</span>&gt;
+
+<span class="text-slate-500">// After:</span>
+&lt;Button className=<span class="text-green-300">"bg-primary text-primary-foreground hover:bg-primary/90"</span>&gt;</code></pre>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">📏 Principle Applied</h4>
+          <span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">DRY + Open/Closed — theming should be configurable without editing source</span>
+        </div>
+        <a href="#table-of-contents" class="inline-block text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">↑ Back to ToC</a>
+      </div>
+
+      <!-- H5 -->
+      <div id="h5" class="anchor-offset bg-white dark:bg-slate-800/40 border border-orange-200 dark:border-orange-800/30 rounded-2xl p-5 sm:p-6 shadow-sm space-y-4">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">#H5 — forcedTheme: "light" kills dark mode entirely</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 font-mono">src/app/layout.tsx:28-29</p>
+          </div>
+          <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 shrink-0">High</span>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">🔴 The Problem & Why It's Bad</h4>
+          <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+            Both <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">forcedTheme="light"</code> and <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">enableSystem={false}</code> are set. The CSS file defines beautiful dark mode variables (<code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">.dark</code> selector), but they can never be used. This is contradictory — either remove the dark variables or remove <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">forcedTheme</code>.
+          </p>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">💡 Proposed Solution</h4>
+          <p class="text-sm text-slate-600 dark:text-slate-400">Remove <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">forcedTheme</code> and <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">enableSystem</code> to allow OS-based theming.</p>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">🛠️ Code Example</h4>
+          <pre class="code-dark bg-slate-950 text-slate-200 text-sm rounded-xl p-4 overflow-x-auto leading-relaxed"><code><span class="text-slate-500">// Before:</span>
+&lt;ThemeProvider attribute=<span class="text-green-300">"class"</span> defaultTheme=<span class="text-green-300">"light"</span> forcedTheme=<span class="text-green-300">"light"</span> enableSystem={false} disableTransitionOnChange&gt;
+
+<span class="text-slate-500">// After:</span>
+&lt;ThemeProvider attribute=<span class="text-green-300">"class"</span> defaultTheme=<span class="text-green-300">"system"</span> disableTransitionOnChange&gt;</code></pre>
+        </div>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">📏 Principle Applied</h4>
+          <span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">YAGNI/Consistency — don't define dead CSS</span>
+        </div>
+        <a href="#table-of-contents" class="inline-block text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">↑ Back to ToC</a>
+      </div>
+    </section>
+
+    <!-- ─── MEDIUM ─── -->
+    <section id="medium" class="anchor-offset space-y-6">
+      <div class="flex items-center gap-3">
+        <span class="text-sm font-bold px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">MEDIUM</span>
+        <h2 class="text-xl font-extrabold text-slate-900 dark:text-white">🟡 Medium Issues</h2>
+      </div>
+
+      <!-- M1 -->
+      <div id="m1" class="anchor-offset bg-white dark:bg-slate-800/40 border border-amber-200 dark:border-amber-800/30 rounded-2xl p-5 sm:p-6 shadow-sm space-y-3">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">#M1 — Like query N+1 — FeedList fetches ALL likes for EVERY post</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 font-mono">src/features/feed/components/FeedList.tsx:40-71</p>
+          </div>
+          <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 shrink-0">Medium</span>
+        </div>
+        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed"><strong class="text-slate-800 dark:text-slate-200">🔴 Problem:</strong> For a feed of 20 posts, each with 50 likes, the query fetches <strong>1000 like rows</strong> to the client, even though PostCard only checks <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">likes.some(like =&gt; like.user_id === currentUserId)</code>. This is massive over-fetch.</p>
+        <p class="text-sm text-slate-600 dark:text-slate-400"><strong class="text-slate-800 dark:text-slate-200">💡 Fix:</strong> Fetch only a boolean per post via a separate lightweight query.</p>
+        <div>
+          <h4 class="font-semibold text-sm text-slate-700 dark:text-slate-300 mb-1">🛠️ Code Example</h4>
+          <pre class="code-dark bg-slate-950 text-slate-200 text-sm rounded-xl p-4 overflow-x-auto leading-relaxed"><code><span class="text-slate-500">// FeedList.tsx — instead of fetching all likes:</span>
+<span class="text-blue-400">const</span> { data<span class="text-slate-400">:</span> userLikes } <span class="text-slate-400">=</span> <span class="text-blue-400">await</span> supabase
+  .<span class="text-amber-300">from</span>(<span class="text-green-300">"likes"</span>)
+  .<span class="text-amber-300">select</span>(<span class="text-green-300">"post_id"</span>)
+  .<span class="text-amber-300">eq</span>(<span class="text-green-300">"user_id"</span>, user.id)
+  .<span class="text-amber-300">in</span>(<span class="text-green-300">"post_id"</span>, postIds);
+<span class="text-blue-400">const</span> likedPostIds <span class="text-slate-400">=</span> <span class="text-blue-400">new</span> <span class="text-amber-300">Set</span>(userLikes<span class="text-slate-400">?.</span>map(l <span class="text-slate-400">=&gt;</span> l.post_id) <span class="text-slate-400">??</span> []);
+<span class="text-slate-500">// Pass likedPostIds to PostCard instead of full likes array</span></code></pre>
+        </div>
+        <div>
+          <span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">Performance — minimize payload; ISP — give clients exactly what they need</span>
+        </div>
+        <a href="#table-of-contents" class="inline-block text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">↑ Back to ToC</a>
+      </div>
+
+      <!-- M2 -->
+      <div id="m2" class="anchor-offset bg-white dark:bg-slate-800/40 border border-amber-200 dark:border-amber-800/30 rounded-2xl p-5 sm:p-6 shadow-sm space-y-3">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">#M2 — No pagination — infinite scroll will be painful to add</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 font-mono">src/features/feed/components/FeedList.tsx</p>
+          </div>
+          <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 shrink-0">Medium</span>
+        </div>
+        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed"><strong class="text-slate-800 dark:text-slate-200">🔴 Problem:</strong> The feed fetches ALL posts in a single query with no <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">.range()</code> limit. As users create hundreds of posts, page load grows unboundedly.</p>
+        <p class="text-sm text-slate-600 dark:text-slate-400"><strong class="text-slate-800 dark:text-slate-200">💡 Fix:</strong> Add <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">.range(0, 19)</code> for initial load + pass a <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">fetchNextPage</code> callback.</p>
+        <div>
+          <span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">Scalability — design for growth from the start</span>
+        </div>
+        <a href="#table-of-contents" class="inline-block text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">↑ Back to ToC</a>
+      </div>
+
+      <!-- M3 -->
+      <div id="m3" class="anchor-offset bg-white dark:bg-slate-800/40 border border-amber-200 dark:border-amber-800/30 rounded-2xl p-5 sm:p-6 shadow-sm space-y-3">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">#M3 — CommentsDialog has two prop sources for `user` — trigger vs user confusion</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 font-mono">src/features/feed/components/CommentsDialog.tsx:18-30</p>
+          </div>
+          <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 shrink-0">Medium</span>
+        </div>
+        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed"><strong class="text-slate-800 dark:text-slate-200">🔴 Problem:</strong> PostCard passes <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">trigger={null}</code> and controls open externally, but the component still renders <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">&lt;DialogTrigger&gt;{trigger}&lt;/DialogTrigger&gt;</code> — creating an invisible DOM element.</p>
+        <p class="text-sm text-slate-600 dark:text-slate-400"><strong class="text-slate-800 dark:text-slate-200">💡 Fix:</strong> <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">{trigger &amp;&amp; &lt;DialogTrigger asChild&gt;{trigger}&lt;/DialogTrigger&gt;}</code></p>
+        <div>
+          <span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">ISP — don't accept props you conditionally render as null</span>
+        </div>
+        <a href="#table-of-contents" class="inline-block text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">↑ Back to ToC</a>
+      </div>
+
+      <!-- M4 -->
+      <div id="m4" class="anchor-offset bg-white dark:bg-slate-800/40 border border-amber-200 dark:border-amber-800/30 rounded-2xl p-5 sm:p-6 shadow-sm space-y-3">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">#M4 — normalizeProfile duplicated in 3 files</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 font-mono">FeedList.tsx:9-13 · profile/[id]/page.tsx:12-16</p>
+          </div>
+          <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 shrink-0">Medium</span>
+        </div>
+        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed"><strong class="text-slate-800 dark:text-slate-200">🔴 Problem:</strong> The exact same <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">normalizeProfile</code> function exists in two files. If Supabase changes its join return format, both must be updated.</p>
+        <p class="text-sm text-slate-600 dark:text-slate-400"><strong class="text-slate-800 dark:text-slate-200">💡 Fix:</strong> Export from <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">lib/supabase/server.ts</code> and import everywhere.</p>
+        <div>
+          <span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">DRY — single source of truth for data normalization</span>
+        </div>
+        <a href="#table-of-contents" class="inline-block text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">↑ Back to ToC</a>
+      </div>
+
+      <!-- M5 -->
+      <div id="m5" class="anchor-offset bg-white dark:bg-slate-800/40 border border-amber-200 dark:border-amber-800/30 rounded-2xl p-5 sm:p-6 shadow-sm space-y-3">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">#M5 — Whitespace in select string</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 font-mono">src/lib/supabase/server.ts:30</p>
+          </div>
+          <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 shrink-0">Medium</span>
+        </div>
+        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed"><strong class="text-slate-800 dark:text-slate-200">🔴 Problem:</strong> <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">.select("  id, full_name, avatar_url")</code> has 2 spaces before <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">"id"</code>. Inconsistent with codebase style.</p>
+        <p class="text-sm text-slate-600 dark:text-slate-400"><strong class="text-slate-800 dark:text-slate-200">💡 Fix:</strong> Remove extra space.</p>
+        <div>
+          <span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">Consistency — code style</span>
+        </div>
+        <a href="#table-of-contents" class="inline-block text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">↑ Back to ToC</a>
+      </div>
+
+      <!-- M6 -->
+      <div id="m6" class="anchor-offset bg-white dark:bg-slate-800/40 border border-amber-200 dark:border-amber-800/30 rounded-2xl p-5 sm:p-6 shadow-sm space-y-3">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">#M6 — friend.profile as any bypasses TypeScript</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 font-mono">src/app/(main)/friends/page.tsx:31</p>
+          </div>
+          <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 shrink-0">Medium</span>
+        </div>
+        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed"><strong class="text-slate-800 dark:text-slate-200">🔴 Problem:</strong> <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">profile: friendProfile as any</code> disables type checking for the entire friends rendering logic. This is a V1/V2 issue that was never fixed.</p>
+        <p class="text-sm text-slate-600 dark:text-slate-400"><strong class="text-slate-800 dark:text-slate-200">💡 Fix:</strong> Type the joined query result properly or use <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">normalizeProfile</code>.</p>
+        <div>
+          <span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">ISP — no as any</span>
+        </div>
+        <a href="#table-of-contents" class="inline-block text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">↑ Back to ToC</a>
+      </div>
+
+      <!-- M7 -->
+      <div id="m7" class="anchor-offset bg-white dark:bg-slate-800/40 border border-amber-200 dark:border-amber-800/30 rounded-2xl p-5 sm:p-6 shadow-sm space-y-3">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white">#M7 — Dynamic import in useAuth for no reason</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-1 font-mono">src/features/auth/hooks/useAuth.tsx:36</p>
+          </div>
+          <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 shrink-0">Medium</span>
+        </div>
+        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed"><strong class="text-slate-800 dark:text-slate-200">🔴 Problem:</strong> <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">const { createClient } = await import("@/lib/supabase/client")</code> is a dynamic import where a static import would work. Adds unnecessary complexity.</p>
+        <p class="text-sm text-slate-600 dark:text-slate-400"><strong class="text-slate-800 dark:text-slate-200">💡 Fix:</strong> Static import at top of file.</p>
+        <div>
+          <span class="inline-block text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">KISS — prefer static imports</span>
+        </div>
+        <a href="#table-of-contents" class="inline-block text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">↑ Back to ToC</a>
+      </div>
+    </section>
+
+    <!-- ─── LOW ─── -->
+    <section id="low" class="anchor-offset space-y-6">
+      <div class="flex items-center gap-3">
+        <span class="text-sm font-bold px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">LOW</span>
+        <h2 class="text-xl font-extrabold text-slate-900 dark:text-white">🔵 Low Issues</h2>
+      </div>
+
+      <!-- L1-L6 condensed cards -->
+      <div class="grid sm:grid-cols-2 gap-4">
+        <!-- L1 -->
+        <div id="l1" class="anchor-offset bg-white dark:bg-slate-800/40 border border-blue-200 dark:border-blue-800/30 rounded-xl p-4 space-y-2">
+          <div class="flex items-start justify-between gap-2">
+            <h3 class="font-bold text-slate-900 dark:text-white text-sm">#L1 — EditProfileDialog uses inline type</h3>
+            <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 shrink-0">Low</span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-mono">EditProfileDialog.tsx:20-26</p>
+          <p class="text-sm text-slate-600 dark:text-slate-400"><strong class="text-slate-800 dark:text-slate-200">Problem:</strong> <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">userProfile: { full_name: string | null; avatar_url: string | null; }</code> duplicates the <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">Profile</code> type.</p>
+          <p class="text-sm text-slate-600 dark:text-slate-400"><strong class="text-slate-800 dark:text-slate-200">Fix:</strong> Import <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">Profile | null</code> from <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">@/types/database.types</code>.</p>
+          <span class="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">DRY</span>
+          <a href="#table-of-contents" class="block text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">↑ Back to ToC</a>
+        </div>
+
+        <!-- L2 -->
+        <div id="l2" class="anchor-offset bg-white dark:bg-slate-800/40 border border-blue-200 dark:border-blue-800/30 rounded-xl p-4 space-y-2">
+          <div class="flex items-start justify-between gap-2">
+            <h3 class="font-bold text-slate-900 dark:text-white text-sm">#L2 — Misleading cursor-pointer on CommentItem name</h3>
+            <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 shrink-0">Low</span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-mono">CommentItem.tsx:24</p>
+          <p class="text-sm text-slate-600 dark:text-slate-400">The author name shows <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">cursor-pointer hover:underline</code> but clicking does nothing.</p>
+          <span class="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">UX — avoid misleading affordances</span>
+          <a href="#table-of-contents" class="block text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">↑ Back to ToC</a>
+        </div>
+
+        <!-- L3 -->
+        <div id="l3" class="anchor-offset bg-white dark:bg-slate-800/40 border border-blue-200 dark:border-blue-800/30 rounded-xl p-4 space-y-2">
+          <div class="flex items-start justify-between gap-2">
+            <h3 class="font-bold text-slate-900 dark:text-white text-sm">#L3 — Sidebar links use index as key</h3>
+            <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 shrink-0">Low</span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-mono">Sidebar.tsx:91</p>
+          <p class="text-sm text-slate-600 dark:text-slate-400"><code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">key={index}</code> — acceptable for static lists but use <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">item.href</code> for stability.</p>
+          <span class="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">React best practices — stable keys</span>
+          <a href="#table-of-contents" class="block text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">↑ Back to ToC</a>
+        </div>
+
+        <!-- L4 -->
+        <div id="l4" class="anchor-offset bg-white dark:bg-slate-800/40 border border-blue-200 dark:border-blue-800/30 rounded-xl p-4 space-y-2">
+          <div class="flex items-start justify-between gap-2">
+            <h3 class="font-bold text-slate-900 dark:text-white text-sm">#L4 — autherName typo</h3>
+            <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 shrink-0">Low</span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-mono">PostCard.tsx:51</p>
+          <p class="text-sm text-slate-600 dark:text-slate-400"><code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">autherName</code> → should be <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">authorName</code>. Propagated to <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">avatar_url</code> alias too.</p>
+          <span class="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">Clean Code — no typos in variable names</span>
+          <a href="#table-of-contents" class="block text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">↑ Back to ToC</a>
+        </div>
+
+        <!-- L5 -->
+        <div id="l5" class="anchor-offset bg-white dark:bg-slate-800/40 border border-blue-200 dark:border-blue-800/30 rounded-xl p-4 space-y-2">
+          <div class="flex items-start justify-between gap-2">
+            <h3 class="font-bold text-slate-900 dark:text-white text-sm">#L5 — Login/Register page duplication</h3>
+            <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 shrink-0">Low</span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-mono">login/page.tsx · register/page.tsx</p>
+          <p class="text-sm text-slate-600 dark:text-slate-400">80% identical layout (image, divider, header). Extract a shared <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">AuthLayout</code>.</p>
+          <span class="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">DRY</span>
+          <a href="#table-of-contents" class="block text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">↑ Back to ToC</a>
+        </div>
+
+        <!-- L6 -->
+        <div id="l6" class="anchor-offset bg-white dark:bg-slate-800/40 border border-blue-200 dark:border-blue-800/30 rounded-xl p-4 space-y-2">
+          <div class="flex items-start justify-between gap-2">
+            <h3 class="font-bold text-slate-900 dark:text-white text-sm">#L6 — No Error Boundary</h3>
+            <span class="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 shrink-0">Low</span>
+          </div>
+          <p class="text-xs text-slate-500 dark:text-slate-400 font-mono">src/app/error.tsx (missing)</p>
+          <p class="text-sm text-slate-600 dark:text-slate-400">If a Server Action throws unexpectedly, the user sees Next.js's raw error page with stack trace.</p>
+          <span class="inline-block text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">Resilience — graceful degradation</span>
+          <a href="#table-of-contents" class="block text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition">↑ Back to ToC</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══ ARCHITECTURAL ═══ -->
+    <section id="architectural" class="anchor-offset space-y-6">
+      <div class="flex items-center gap-3">
+        <span class="text-sm font-bold px-3 py-1 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400">ARCH</span>
+        <h2 class="text-xl font-extrabold text-slate-900 dark:text-white">🏗️ Architectural Suggestions</h2>
+      </div>
+
+      <div class="bg-white dark:bg-slate-800/40 border border-violet-200 dark:border-violet-800/30 rounded-2xl p-5 sm:p-6 shadow-sm">
+        <h3 class="font-bold text-slate-900 dark:text-white mb-4">📦 Package / Library Recommendations</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b border-slate-200 dark:border-slate-700">
+                <th class="text-right py-2 pr-2 font-semibold text-slate-700 dark:text-slate-300">Package</th>
+                <th class="text-right py-2 pr-2 font-semibold text-slate-700 dark:text-slate-300">Why</th>
+                <th class="text-right py-2 font-semibold text-slate-700 dark:text-slate-300">Replaces</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-700/50">
+              <tr><td class="py-2.5 pr-2 font-mono text-xs text-blue-600 dark:text-blue-400">@tanstack/react-query</td><td class="py-2.5 pr-2 text-slate-600 dark:text-slate-400">Already installed but unused for feed — use <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">useQuery</code> + <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">useMutation</code> for optimistic updates</td><td class="py-2.5 text-slate-600 dark:text-slate-400"><code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">usePosts.ts</code> stub</td></tr>
+              <tr><td class="py-2.5 pr-2 font-mono text-xs text-blue-600 dark:text-blue-400">react-intersection-observer</td><td class="py-2.5 pr-2 text-slate-600 dark:text-slate-400">Infinite scroll with minimal boilerplate</td><td class="py-2.5 text-slate-600 dark:text-slate-400">Manual scroll handlers</td></tr>
+              <tr><td class="py-2.5 pr-2 font-mono text-xs text-blue-600 dark:text-blue-400">date-fns</td><td class="py-2.5 pr-2 text-slate-600 dark:text-slate-400">Arabic date formatting (<code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">formatDistanceToNow</code>) with proper locale</td><td class="py-2.5 text-slate-600 dark:text-slate-400">Manual <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">toLocaleDateString</code></td></tr>
+              <tr><td class="py-2.5 pr-2 font-mono text-xs text-blue-600 dark:text-blue-400">react-error-boundary</td><td class="py-2.5 pr-2 text-slate-600 dark:text-slate-400">Error boundaries with reset capability</td><td class="py-2.5 text-slate-600 dark:text-slate-400">Manual error state</td></tr>
+              <tr><td class="py-2.5 pr-2 font-mono text-xs text-blue-600 dark:text-blue-400">@supabase/realtime-js</td><td class="py-2.5 pr-2 text-slate-600 dark:text-slate-400">Direct channel subscription control without <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">router.refresh()</code></td><td class="py-2.5 text-slate-600 dark:text-slate-400">Full-page refresh hack</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="bg-white dark:bg-slate-800/40 border border-violet-200 dark:border-violet-800/30 rounded-2xl p-5 sm:p-6 shadow-sm space-y-3">
+        <h3 class="font-bold text-slate-900 dark:text-white">🔮 Suggested Structural Patterns</h3>
+        <ul class="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+          <li class="flex items-start gap-2"><span class="text-violet-500 mt-0.5">▸</span><span><strong class="text-slate-800 dark:text-slate-200">Factory Pattern for Dialog Triggers:</strong> Currently, every dialog (<code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">CreatePost</code>, <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">CommentsDialog</code>, <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">EditProfileDialog</code>) manages its own open/close state. Extract a <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">useDialog()</code> hook that standardizes open/close, pending, and error states.</span></li>
+          <li class="flex items-start gap-2"><span class="text-violet-500 mt-0.5">▸</span><span><strong class="text-slate-800 dark:text-slate-200">Strategy Pattern for Data Fetching:</strong> The feed, profile page, and friends page each build Supabase queries manually. Extract a <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">PostRepository</code> class with methods like <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">getFeed(userId, range)</code>, <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">getByUser(profileUserId, range)</code>.</span></li>
+          <li class="flex items-start gap-2"><span class="text-violet-500 mt-0.5">▸</span><span><strong class="text-slate-800 dark:text-slate-200">Observer Pattern for Realtime:</strong> Instead of subscribing to 3 channels in <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">RealtimeFeedList</code>, create a <code class="text-xs bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded">useRealtimeSubscription(table, onEvent)</code> hook that components can observe independently.</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ═══ FOOTER ═══ -->
+    <footer class="border-t border-slate-200 dark:border-slate-700 pt-6 pb-8 text-center text-xs text-slate-400 dark:text-slate-500 space-y-1">
+      <p>Code Review V3 — Deep Dive Report</p>
+      <p>59 source files audited · 24 issues found · Generated 2026-06-08</p>
+      <p class="text-slate-300 dark:text-slate-600">Next.js App Router · Supabase SSR · Feature-Sliced Design · Tailwind v4 · shadcn/ui</p>
+    </footer>
+
+  </main>
+</body>
+</html>

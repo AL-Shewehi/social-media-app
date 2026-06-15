@@ -1,30 +1,24 @@
 "use server";
 
-import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { requireUser } from "@/lib/supabase/server";
+import { withErrorHandling } from "@/lib/with-error-handling";
 
 export async function searchProfilesAction(query: string) {
-  try {
-    if (!query || query.trim().length < 2) {
-      return { success: true, data: [] };
-    }
+ return withErrorHandling(async () => {
+    const { supabase } = await requireUser();
 
-    const supabase = await createServerSupabaseClient();
+    if (!query || query.trim().length < 2) {
+      return [];
+    }
 
     const { data: profiles, error } = await supabase
       .from("profiles")
       .select("id, full_name, avatar_url")
-      .ilike("full_name", `%${query.trim()}%`) //  للبحث عن جزء من الاسم
+      .ilike("full_name", `%${query.trim()}%`)
       .limit(7); 
 
     if (error) throw error;
 
-    return { success: true, data: profiles || [] };
-  } catch (error: unknown) {
-    console.error("searchProfilesAction error:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "حدث خطأ أثناء البحث",
-      data: [],
-    };
-  }
+    return profiles || [];
+  }, "حدث خطأ أثناء البحث");
 }

@@ -1,4 +1,5 @@
 "use client";
+
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -22,9 +23,17 @@ import {
 } from "@/components/ui/select";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../hooks/useAuth";
+import { toast } from "sonner";
+import { Loader2 } from "lucide-react"; 
 
-// هنا هنستخدم Zod عشان نضمن ان الداتا اللي داخلة صحيحة
 export type RegisterFormValues = z.infer<typeof signupSchema>;
+
+type RegisterResponse = {
+  success: boolean;
+  requiresConfirmation?: boolean;
+  message?: string;
+  error?: string;
+};
 
 export default function RegisterForm() {
   const router = useRouter();
@@ -39,11 +48,25 @@ export default function RegisterForm() {
   });
 
   const onSubmit = async (values: RegisterFormValues) => {
-    const result = await registerUser(values);
-    if (result) {
-      router.push("/login");
+    try {
+      const result = await registerUser(values) as RegisterResponse | null;
+      
+      if (result && result.success) {
+        if (result.requiresConfirmation && result.message) {
+          toast.success(result.message, { duration: 10000 });
+        } else {
+          toast.success("تم إنشاء الحساب بنجاح! يرجى تسجيل الدخول.");
+        }
+        router.push("/login");
+      }
+    } catch (err) {
+      console.error("Registration error:", err);
+      toast.error("حدث خطأ غير متوقع أثناء معالجة البيانات.");
     }
   };
+
+  const isButtonDisabled = isSubmitting || isLoading;
+
   return (
     <Card>
       <CardHeader>
@@ -55,10 +78,10 @@ export default function RegisterForm() {
       </CardHeader>
       <CardContent>
         {authError && (
-            <p className="text-sm p-3 bg-red-50 text-red-600 rounded-md text-center mb-4">
-              {authError}
-            </p>
-          )}
+          <p className="text-sm p-3 bg-red-50 text-red-600 rounded-md text-center mb-4">
+            {authError}
+          </p>
+        )}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -67,6 +90,7 @@ export default function RegisterForm() {
                 type="text"
                 placeholder="الاسم الأول"
                 className="w-full h-12"
+                disabled={isButtonDisabled}
               />
               {errors.firstName && (
                 <p className="text-sm text-red-500">
@@ -80,6 +104,7 @@ export default function RegisterForm() {
                 type="text"
                 placeholder="الاسم الأخير"
                 className="w-full h-12"
+                disabled={isButtonDisabled}
               />
               {errors.lastName && (
                 <p className="text-sm text-red-500">
@@ -95,6 +120,7 @@ export default function RegisterForm() {
               type="date"
               placeholder="تاريخ الميلاد"
               className="w-full h-12"
+              disabled={isButtonDisabled}
             />
             {errors.birthDate && (
               <p className="text-sm text-red-500">{errors.birthDate.message}</p>
@@ -109,6 +135,7 @@ export default function RegisterForm() {
                   onValueChange={field.onChange}
                   defaultValue={field.value}
                   value={field.value}
+                  disabled={isButtonDisabled}
                 >
                   <SelectTrigger
                     className="w-full h-12"
@@ -135,6 +162,7 @@ export default function RegisterForm() {
               type="email"
               placeholder="البريد الإلكتروني"
               className="w-full h-12"
+              disabled={isButtonDisabled}
             />
             {errors.email && (
               <p className="text-sm text-red-500">{errors.email.message}</p>
@@ -146,26 +174,34 @@ export default function RegisterForm() {
               type="password"
               placeholder="كلمة المرور"
               className="w-full h-12"
+              disabled={isButtonDisabled}
             />
             {errors.password && (
               <p className="text-sm text-red-500">{errors.password.message}</p>
             )}
           </div>
+          
           <Button
             type="submit"
-            rounded="full"
             size="lg"
-            disabled={isSubmitting}
-            className="w-full h-10"
+            disabled={isButtonDisabled}
+            className="w-full h-10 gap-2 font-semibold"
           >
-            {isSubmitting ? "جاري إنشاء الحساب..." : "إنشاء حساب"}
+            {isButtonDisabled ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>جاري إنشاء الحساب...</span>
+              </>
+            ) : (
+              <span>إنشاء حساب</span>
+            )}
           </Button>
           <Button
             variant="outline"
-            rounded="full"
             size="lg"
             asChild
             className="w-full h-10"
+            disabled={isButtonDisabled}
           >
             <Link href="/login" className="text-center">
               لدي حساب بالفعل

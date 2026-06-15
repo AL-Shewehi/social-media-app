@@ -1,124 +1,59 @@
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-import type { Profile } from "@/types/database.types";
 import RealtimeFeedList from "@/features/feed/components/RealtimeFeedList";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Calendar, Edit } from "lucide-react";
-import { redirect } from "next/navigation";
 import EditProfileDialog from "@/features/profile/components/EditProfileDialog";
 import CreatePost from "@/features/feed/components/CreatePost";
 import FriendshipButton from "@/features/friends/components/FriendshipButton";
+import FeedErrorBoundary from "@/components/shared/FeedErrorBoundary";
+import { getProfilePageData } from "@/features/profile/actions";
 
-function normalizeProfile(profiles: unknown): Profile | null {
-  if (!profiles) return null;
-  if (Array.isArray(profiles)) return (profiles[0] as Profile) ?? null;
-  return profiles as Profile;
-}
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-// Next.js App Router بيباصي الـ params أوتوماتيك لصفحات الـ Dynamic Routes
 interface ProfilePageProps {
   params: Promise<{ id: string }>;
 }
 
 export default async function ProfilePage({ params }: ProfilePageProps) {
-  // انتظر الـ params لأنها في النسخ الحديثة من Next.js بقت Promise
   const { id: profileUserId } = await params;
 
-  const supabase = await createServerSupabaseClient();
-
-  // 1.  اليوزر الحالي اللي فاتح المتصفح (عشان نشيك هل ده حسابي ولا حساب حد تاني)
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-  if (authError || !user) {
-    redirect("/login");
-  }
-
-  // 2. جلب بيانات صاحب البروفايل (سواء أنا أو يوزر تاني) بناءً على الـ id اللي في الـ URL
-  const { data: targetProfile, error: profileError } = await supabase
-    .from("profiles")
-    .select("id, full_name, avatar_url")
-    .eq("id", profileUserId)
-    .single();
-
-  // لو الـ id اللي في الـ URL غلط أو مش موجود في الداتا بيز
-  if (profileError || !targetProfile) {
-    console.error("Profile fetch error:", profileError?.message);
+  if (!profileUserId || !UUID_REGEX.test(profileUserId)) {
     return (
       <div className="text-center py-20 text-muted-foreground bg-card border rounded-xl max-w-2xl mx-auto mt-10">
-        هذا الحساب غير موجود أو تم حذفه. 🔍
+        معرف الحساب غير صالح أو غير صحيح. 🔍
       </div>
     );
   }
 
-  // 3.  بوستات صاحب هذا البروفايل فقط
-  const { data: posts } = await supabase
-    .from("posts")
-    .select(
-      `
-      id,
-      content,
-      created_at,
-      user_id,
-      image_url,
-      profiles!posts_user_id_fkey (
-        full_name,
-        avatar_url
-      ),
-      comments (
-        id,
-        content,
-        created_at,
-        user_id,
-        profiles (
-          full_name,
-          avatar_url
-        )
-      ),
-      likes (
-        post_id,
-        user_id
-      )
-    `,
-    )
-    .eq("user_id", profileUserId) // فلترة البوستات بناءً على البروفايل المفتوح
-    .order("created_at", { ascending: false });
+  // 2. جلب البيانات من الداتابيز
+  const {
+    targetProfile,
+    formattedPosts,
+    friendshipData,
+    isMyOwnProfile,
+    currentUser,
+    error,
+  } = await getProfilePageData(profileUserId);
 
-  const { data: friendshipData } = await supabase
-    .from("friendships")
-    .select("id, sender_id, receiver_id, status")
-    .or(
-      `and(sender_id.eq.${user.id},receiver_id.eq.${profileUserId}),and(sender_id.eq.${profileUserId},receiver_id.eq.${user.id})`,
-    )
-    .maybeSingle(); // استخدام maybeSingle لمنع ضرب الخطأ لو مفيش صداقة لسه
-
-  // 4. تسوية البروفايلات والبيانات
-  const formattedPosts =
-    posts?.map((post) => ({
-      ...post,
-      profiles: normalizeProfile(post.profiles),
-      comments:
-        (post.comments as any[])?.map((c) => ({
-          ...c,
-          profiles: normalizeProfile(c.profiles),
-        })) ?? [],
-      likes: (post.likes as any[]) ?? [],
-    })) ?? [];
+  // معالجة الأخطاء (لو الحساب مش موجود أو حصل خطأ في الداتابيز)
+  if (error || !targetProfile || !currentUser) {
+    return (
+      <div className="text-center py-20 text-muted-foreground bg-card border rounded-xl max-w-2xl mx-auto mt-10">
+        {error || "حدث خطأ غير متوقع. 🔍"}
+      </div>
+    );
+  }
 
   const fullName = targetProfile.full_name || "مستخدم مجهول";
   const fallbackLetter = fullName.charAt(0).toUpperCase();
-
-  const isMyOwnProfile = user.id === profileUserId;
 
   return (
     <div className="w-full max-w-6xl mx-auto px-4 py-6 space-y-6 select-none">
       {/* ─── الكارد العلوي للبروفايل ─── */}
       <div className="bg-card border rounded-xl overflow-hidden shadow-sm">
-        {/* الغلاف */}
-        <div className="h-40 md:h-52 bg-gradient-to-r from-primary/20 via-primary/10 to-secondary" />
+        <div className="h-40 md:h-52 bg-linear-to-r from-primary/20 via-primary/10 to-secondary" />
 
-        {/* بيانات المستخدم وصورته */}
         <div className="p-6 relative flex flex-col md:flex-row items-center md:items-end justify-between gap-4 -mt-16 md:-mt-20 border-b border-border/60">
           <div className="flex flex-col md:flex-row items-center md:items-end gap-4 text-center md:text-right">
             <Avatar className="h-28 w-28 md:h-36 md:w-36 border-4 border-card shadow-md">
@@ -141,7 +76,6 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
             </div>
           </div>
 
-          {/* زر تعديل الحساب: يظهر فقط وفقط إذا كنت أنا صاحب البروفايل ده */}
           {isMyOwnProfile ? (
             <EditProfileDialog
               userProfile={targetProfile}
@@ -153,17 +87,16 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
               }
             />
           ) : (
-            // زر طلب الصداقة أو إدارة الصداقة: يظهر فقط لو ده مش حسابي
             <FriendshipButton
               targetUserId={profileUserId}
-              currentUserId={user.id}
+              currentUserId={currentUser.id}
               initialFriendship={friendshipData}
             />
           )}
         </div>
       </div>
 
-      {/* ─── الجزء السفلي: النبذة وبوستات اليوزر ─── */}
+      {/* ─── الجزء السفلي ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <div className="lg:col-span-1 bg-card border rounded-xl p-4 space-y-3 shadow-sm sticky top-20">
           <h3 className="font-bold text-lg text-foreground">نبذة شخصية</h3>
@@ -179,11 +112,13 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           <h3 className="font-bold text-lg text-foreground mb-4">
             {isMyOwnProfile ? "منشوراتي" : `منشورات ${fullName.split(" ")[0]}`}
           </h3>
-          <RealtimeFeedList
-            initialPosts={formattedPosts}
-            currentUserId={user.id}
-            currentUserProfile={targetProfile}
-          />
+          <FeedErrorBoundary>
+            <RealtimeFeedList
+              initialPosts={formattedPosts || []}
+              currentUserId={currentUser.id}
+              currentUserProfile={targetProfile}
+            />
+          </FeedErrorBoundary>
         </div>
       </div>
     </div>

@@ -1,27 +1,33 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { loginUser, registerUser } from "../actions";
+import { loginUser, registerUser } from "@/features/auth/actions";
+import { createClient } from "@/lib/supabase/client"; 
 
 export function useAuth() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const execute = useCallback(async <T,>(action: () => Promise<T | null>): Promise<T | null> => {
+  const execute = useCallback(async <T extends { success?: boolean; error?: string } | null>(
+    action: () => Promise<T>
+  ) => {
     setIsLoading(true);
     setError(null);
+    
     const result = await action();
-    if (result && typeof result === "object" && "error" in result) {
-      setError((result as { error: string }).error);
+    
+    if (!result || result.success === false) {
+      setError(result?.error || "حدث خطأ غير متوقع");
       setIsLoading(false);
       return null;
     }
+    
     setIsLoading(false);
-    return result as T;
+    return result; 
   }, []);
 
   const login = (values: { email: string; password: string }) =>
-    execute(() => loginUser(values)) as Promise<{ success: true } | null>;
+    execute(() => loginUser(values));
 
   const register = (values: {
     email: string;
@@ -30,12 +36,13 @@ export function useAuth() {
     lastName: string;
     birthDate: string;
     gender: string;
-  }) => execute(() => registerUser(values)) as Promise<{ success: true } | null>;
+  }) => execute(() => registerUser(values));
 
   const signOut = async () => {
-    const { createClient } = await import("@/lib/supabase/client");
     const supabase = createClient();
     await supabase.auth.signOut();
+    
+    window.location.href = "/login";
   };
 
   return { login, register, signOut, isLoading, error };

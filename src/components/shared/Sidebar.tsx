@@ -15,7 +15,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Profile } from "@/types/database.types";
 import { useUIStore } from "@/store/useUIStore";
 import { cn } from "@/lib/utils";
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
 
 const sidebarItems = [
     { title: "الأصدقاء", icon: Users, href: "/friends", iconColor: "text-blue-500" },
@@ -35,8 +35,11 @@ export default function Sidebar({ user }: SidebarProps) {
     const setMobileSidebarOpen = useUIStore((state) => state.setMobileSidebarOpen);
 
     const fullName = user?.full_name || "مستخدم مجهول";
-    const fallbackLetter = fullName.charAt(0).toUpperCase();
+    const fallbackLetter = fullName.charAt(0).toUpperCase() || "?";
     const avatar = user?.avatar_url;
+
+    //  تحديد الرابط بشكل آمن لحماية الواجهة من الـ undefined
+    const profileHref = user?.id ? `/profile/${user.id}` : "#";
 
     return (
         <>
@@ -48,15 +51,14 @@ export default function Sidebar({ user }: SidebarProps) {
             )}
 
             <aside className={cn(
-                // كلاسات الديسكتوب الافتراضية (ثابت ومستقر في الجنب الأيمن)
-                "hidden lg:flex flex-col w-full max-w-[300px] h-[calc(100vh-3.5rem)] sticky top-14 overflow-y-auto px-2 bg-transparent select-none scrollbar-thin border-l py-2",
+                "hidden lg:flex flex-col w-full md:max-w-75 h-[calc(100vh-3.5rem)] sticky top-14 self-start overflow-y-auto px-2 bg-transparent select-none scrollbar-thin border-l py-2",
                 
                 // كلاسات الموبايل (تحويله لـ Drawer متحرك يظهر من اليمين بناءً على الـ Store)
-                "fixed top-0 right-0 z-50 h-full w-[280px] bg-card border-l shadow-2xl transition-transform duration-300 ease-in-out lg:relative lg:top-0 lg:z-0 lg:h-[calc(100vh-3.5rem)] lg:w-full lg:shadow-none p-4 lg:p-2",
+                "fixed top-0 right-0 z-50 h-full w-full md:w-72 bg-card border-l shadow-2xl transition-transform duration-300 ease-in-out lg:sticky lg:top-14 lg:z-0 lg:h-[calc(100vh-3.5rem)] lg:w-full lg:shadow-none p-4 lg:p-2",
                 isMobileOpen ? "translate-x-0 flex" : "translate-x-full lg:translate-x-0"
             )}>
 
-                {/* زر القفل في الموبايل (يظهر أعلى الـ Sidebar في الشاشات الصغيرة فقط) */}
+                {/* زر القفل في الموبايل */}
                 <div className="flex items-center justify-between lg:hidden mb-4 pb-2 border-b">
                     <span className="font-bold text-lg text-primary">القائمة</span>
                     <Button
@@ -71,8 +73,15 @@ export default function Sidebar({ user }: SidebarProps) {
 
                 {/* البروفايل الشخصي */}
                 <Link
-                    href={`/profile/${user?.id}`}
-                    onClick={() => setMobileSidebarOpen(false)}
+                    href={profileHref}
+                    onClick={(e) => {
+                        // لو الرابط وهمي نمنع التوجيه، ولو حقيقي نقفل المنيو بتاعت الموبايل
+                        if (profileHref === "#") {
+                            e.preventDefault();
+                        } else {
+                            setMobileSidebarOpen(false);
+                        }
+                    }}
                     className="flex items-center gap-3 px-2 py-1.5 w-full rounded-xl hover:bg-secondary/80 transition"
                 >
                     <Avatar className="h-9 w-9 border">
@@ -84,11 +93,11 @@ export default function Sidebar({ user }: SidebarProps) {
 
                 {/* عناصر القائمة */}
                 <div className="space-y-0.5 mt-1">
-                    {sidebarItems.map((item, index) => {
+                    {sidebarItems.map((item) => {
                         const Icon = item.icon;
                         return (
                             <Link
-                                key={index}
+                                key={item.href}
                                 href={item.href}
                                 onClick={() => setMobileSidebarOpen(false)}
                                 className="flex items-center gap-3 p-3 w-full rounded-xl hover:bg-secondary/80 transition"
