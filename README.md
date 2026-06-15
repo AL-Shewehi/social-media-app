@@ -201,7 +201,7 @@ The `notifications` table stores per-action events (`like`, `comment`, `friend_r
 1. **Clone the repository**
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/socially.git
+git clone https://github.com/AL-Shewehi/social-media-app.git
 cd socially
 ```
 
@@ -218,8 +218,6 @@ Copy the template below into `.env.local` (or rename the existing `.env.local` i
 ```env
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-id.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
-NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-publishable-key-here
-SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-here
 ```
 
 - `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` — Found in **Supabase Dashboard → Settings → API**
