@@ -55,40 +55,6 @@ export type PostCardProps = {
   priority?: boolean;
 };
 
-// Notifications Types
-export type NotificationType = 'like' | 'comment' | 'friend_request' | 'friend_accept' | 'share';
-
-export type AppNotification = {
-  id: string;
-  created_at: string;
-  receiver_id: string;
-  actor_id: string;
-  type: NotificationType;
-  post_id: string | null;
-  comment_id: string | null;
-  is_read: boolean;
-  actor_profile?: Profile; 
-};
-
-
-// ─── 1. الأنواع الخام (التي تعود مباشرة من قاعدة البيانات) ───
-
-export interface RawConversationData {
-  id: string;
-  user_one_id: string;
-  user_two_id: string;
-  created_at: string;
-}
-
-export interface RawMessageData {
-  id: string;
-  conversation_id: string;
-  sender_id: string;
-  content: string;
-  is_read: boolean;
-  created_at: string;
-}
-
 
 export interface ChatParticipant {
   id: string;

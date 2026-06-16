@@ -45,7 +45,7 @@ export default function ConversationList() {
   }
 
   return (
-    <div className="flex flex-col overflow-y-auto h-full">
+    <div className="flex flex-col overflow-y-auto h-full bg-background">
       {conversations.map((convo) => {
         const participant = convo.participant;
         const fallbackLetter = participant.full_name?.charAt(0).toUpperCase() || "?";
@@ -83,7 +83,7 @@ export default function ConversationList() {
               </div>
 
               <div className="flex items-center justify-between">
-                <p className="text-[13px] text-muted-foreground truncate w-[85%]">
+                <p className="text-[13px] text-muted-foreground line-clamp-1">
                   {convo.lastMessage ? (
                     <>
                       {/* لو هو اللي باعت الرسالة نحط "أنت:" قبلها للتمييز السريع */}

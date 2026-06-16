@@ -65,7 +65,7 @@ export default function ChatArea({
   return (
     <div className="flex flex-col h-full w-full bg-[url('/chat-pattern.png')] bg-repeat bg-center">
       {/* Header */}
-      <div className="h-16 border-b border-border/50 bg-card/95 backdrop-blur-sm flex items-center px-4 gap-3 shrink-0 z-10">
+      <div className="h-14 border-b border-border/50 bg-card/95 backdrop-blur-sm flex items-center px-4 gap-3 shrink-0 z-10">
         <Link
           href="/chat"
           className="md:hidden p-2 -mr-2 text-muted-foreground hover:bg-secondary rounded-full transition"

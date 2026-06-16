@@ -33,12 +33,12 @@ export async function middleware(request: NextRequest) {
   const authPages = ["/login", "/register", "/reset-password"];
   const isAuthPage = authPages.includes(request.nextUrl.pathname);
 
-  // 1. مستخدم غير مسجل بيحاول يدخل صفحة محمية (الرئيسية، الأصدقاء، البروفايل، الخ..) -> اطرده للوجين
+  //  مستخدم غير مسجل بيحاول يدخل صفحة محمية (الرئيسية، الأصدقاء، البروفايل، الخ..) -> اطرده للوجين
   if (!user && !isAuthPage) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // 2. مستخدم مسجل بالفعل بيحاول يفتح صفحة تسجيل الدخول -> رجعه للرئيسية
+  //  مستخدم مسجل بالفعل بيحاول يفتح صفحة تسجيل الدخول -> رجعه للرئيسية
   if (user && isAuthPage) {
     return NextResponse.redirect(new URL("/", request.url));
   }

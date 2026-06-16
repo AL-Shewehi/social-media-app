@@ -11,8 +11,8 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
   const isChatActive = pathname !== "/chat";
 
   return (
-    <div className="container max-w-6xl mx-auto  px-2 md:px-4 h-[calc(100vh-100px)] md:h-[calc(100vh-60px)]">
-      <Card className="flex flex-row h-full w-full overflow-hidden border shadow-sm rounded-xl bg-card">
+    <div className="container max-w-6xl mx-auto h-[calc(100vh-100px)] md:h-[calc(100vh-60px)]">
+      <Card className="flex flex-row h-full w-full overflow-hidden border shadow-sm bg-card rounded-none gap-0 p-0">
         
         <div 
           className={cn(
@@ -21,8 +21,9 @@ export default function ChatLayout({ children }: { children: React.ReactNode }) 
             isChatActive ? "hidden md:flex" : "flex"
           )}
         >
-          <div className="p-4 border-b border-border/50 bg-card shrink-0">
-            <h2 className="text-xl font-bold">الرسائل</h2>
+          <div className="px-4 border-b border-border bg-card shrink-0 h-14 sticky top-0 z-10 flex items-center">
+
+            <h2 className="text-lg font-bold">الرسائل</h2>
           </div>
           <div className="flex-1 overflow-hidden">
             <ConversationList />
