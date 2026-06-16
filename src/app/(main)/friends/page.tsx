@@ -124,10 +124,10 @@ export default async function FriendsPage({
 
   return (
     <div
-      className="flex w-full min-h-[calc(100vh-56px)] bg-background select-none"
+      className="flex w-full min-h-[calc(100vh-60px)] bg-background select-none"
       dir="rtl"
     >
-      <main className="flex-1 p-6 md:p-8 space-y-10 overflow-x-hidden">
+      <main className="flex-1 px-6 md:px-8 space-y-10 overflow-x-hidden">
         <div className="flex flex-col md:flex-row gap-3 md:gap-6 mb-6">
           {navTabs.map((tab) => {
             const isActive = currentTab === tab.id;

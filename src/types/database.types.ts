@@ -69,3 +69,54 @@ export type AppNotification = {
   is_read: boolean;
   actor_profile?: Profile; 
 };
+
+
+// ─── 1. الأنواع الخام (التي تعود مباشرة من قاعدة البيانات) ───
+
+export interface RawConversationData {
+  id: string;
+  user_one_id: string;
+  user_two_id: string;
+  created_at: string;
+}
+
+export interface RawMessageData {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  content: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+
+export interface ChatParticipant {
+  id: string;
+  full_name: string | null;
+  avatar_url: string | null;
+}
+
+export interface ChatMessage {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  content: string;
+  is_read: boolean;
+  created_at: string;
+  sender?: ChatParticipant | null;
+}
+
+export interface ConversationListItem {
+  id: string;
+  created_at: string;
+  // Participant هنا يمثل "الطرف الآخر" في المحادثة وليس المستخدم الحالي
+  participant: ChatParticipant; 
+  // آخر رسالة لعرضها في قائمة المحادثات (Preview)
+  lastMessage?: {
+    content: string;
+    created_at: string;
+    is_read: boolean;
+    sender_id: string;
+  } | null;
+  unreadCount?: number;
+}

@@ -7,6 +7,7 @@ import CreatePost from "@/features/feed/components/CreatePost";
 import FriendshipButton from "@/features/friends/components/FriendshipButton";
 import FeedErrorBoundary from "@/components/shared/FeedErrorBoundary";
 import { getProfilePageData } from "@/features/profile/actions";
+import MessageButton from "@/features/chat/components/MessageButton";
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -49,7 +50,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   const fallbackLetter = fullName.charAt(0).toUpperCase();
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 py-6 space-y-6 select-none">
+    <div className="w-full max-w-6xl mx-auto px-4  space-y-6 select-none">
       {/* ─── الكارد العلوي للبروفايل ─── */}
       <div className="bg-card border rounded-xl overflow-hidden shadow-sm">
         <div className="h-40 md:h-52 bg-linear-to-r from-primary/20 via-primary/10 to-secondary" />
@@ -87,11 +88,15 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
               }
             />
           ) : (
-            <FriendshipButton
-              targetUserId={profileUserId}
-              currentUserId={currentUser.id}
-              initialFriendship={friendshipData}
-            />
+            <div>
+              <MessageButton targetUserId={profileUserId} variant="outline" />
+
+              <FriendshipButton
+                targetUserId={profileUserId}
+                currentUserId={currentUser.id}
+                initialFriendship={friendshipData}
+              />
+            </div>
           )}
         </div>
       </div>

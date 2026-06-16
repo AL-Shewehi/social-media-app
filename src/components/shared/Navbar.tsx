@@ -22,15 +22,30 @@ import { useUIStore } from "@/store/useUIStore";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useState, useEffect, useRef } from "react";
 import NotificationsDropdown from "./NotificationsDropdown";
+import UnreadBadge from "@/features/chat/components/UnreadBadge";
 
 interface NavbarProps {
   user: Profile | null;
-  onSearchAction: (query: string) => Promise<{ success: boolean; data?: Profile[]; error?: string }>;
-  onFetchNotifications: () => Promise<{ success: boolean; data?: NotificationItem[]; error?: string }>;
-  onMarkNotificationsAsRead: () => Promise<{ success: boolean; error?: string }>;
+  onSearchAction: (
+    query: string,
+  ) => Promise<{ success: boolean; data?: Profile[]; error?: string }>;
+  onFetchNotifications: () => Promise<{
+    success: boolean;
+    data?: NotificationItem[];
+    error?: string;
+  }>;
+  onMarkNotificationsAsRead: () => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
 }
 
-export default function Navbar({ user, onSearchAction, onFetchNotifications, onMarkNotificationsAsRead }: NavbarProps) {
+export default function Navbar({
+  user,
+  onSearchAction,
+  onFetchNotifications,
+  onMarkNotificationsAsRead,
+}: NavbarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const toggleMobileSidebar = useUIStore((state) => state.toggleMobileSidebar);
@@ -196,8 +211,29 @@ export default function Navbar({ user, onSearchAction, onFetchNotifications, onM
         ))}
 
         <Link
+          href="/chat"
+          className={cn(
+            "flex items-center justify-center flex-1 lg:w-28 h-full border-b-2 lg:border-b-4 border-transparent transition relative lg:hidden",
+            "text-muted-foreground hover:bg-secondary",
+            pathname.startsWith("/chat")
+              ? "border-primary text-primary"
+              : "border-transparent",
+          )}
+        >
+          <MessageCircle className="h-6 w-6 text-muted-foreground" />
+
+          <UnreadBadge />
+        </Link>
+
+        <Link
           href="/notifications"
-          className="flex items-center justify-center flex-1 lg:hidden h-full border-b-2 border-transparent text-muted-foreground transition"
+          className={cn(
+            "flex items-center justify-center flex-1 lg:w-28 h-full border-b-2 lg:border-b-4 border-transparent transition relative",
+            "text-muted-foreground hover:bg-secondary",
+            pathname.startsWith("/notifications")
+              ? "border-primary text-primary"
+              : "border-transparent",
+          )}
         >
           <Bell className="h-6 w-6" />
         </Link>
@@ -209,7 +245,13 @@ export default function Navbar({ user, onSearchAction, onFetchNotifications, onM
           size="icon"
           className="rounded-full h-10 w-10 bg-secondary hover:bg-secondary/80 transition relative"
         >
-          <MessageCircle className="h-5 w-5" />
+          <Link
+            href="/chat"
+            className="absolute inset-0 flex items-center justify-center"
+          >
+            <MessageCircle className="h-5 w-5" />
+            <UnreadBadge />
+          </Link>
         </Button>
 
         {user && (
