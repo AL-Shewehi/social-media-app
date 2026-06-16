@@ -1,26 +1,32 @@
 "use client"
 
 import { InfiniteData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { getChatMessagesAction, getConversationsListAction, sendChatMessageAction } from "../actions"
-import { ChatMessage, ConversationListItem } from "@/types/database.types"
+import { getChatMessagesAction, getConversationsListAction, getConversationParticipantAction, sendChatMessageAction } from "../actions"
+import { ChatMessage, ConversationListItem, ChatParticipant } from "@/types/database.types"
 import { useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 
-// ─── 1. جلب قائمة المحادثات ───
 export function useConversations() {
   return useQuery({
     queryKey: ["conversations"],
     queryFn: async () => {
       const result = await getConversationsListAction();
-      
       if (!result.success) throw new Error(result.error);
-      
-      const anyResult = result as any;
-      const list = anyResult.conversations || anyResult.data?.conversations || anyResult.data;
-      
-      return list as ConversationListItem[];
+      return result.data as ConversationListItem[];
     },
+  });
+}
+
+export function useConversationParticipant(conversationId: string) {
+  return useQuery({
+    queryKey: ["conversation-participant", conversationId],
+    queryFn: async () => {
+      const result = await getConversationParticipantAction(conversationId);
+      if (!result.success) throw new Error(result.error);
+      return result.data as ChatParticipant;
+    },
+    enabled: !!conversationId,
   });
 }
 
@@ -38,9 +44,9 @@ export function useChatMessages(conversationId: string) {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => {
       if (!lastPage || lastPage.length < 20) return undefined;
-      return lastPage[lastPage.length - 1].created_at; // الـ Cursor للصفحة الجاية
+      return lastPage[lastPage.length - 1].created_at;
     },
-    enabled: !!conversationId, // لا تعمل الـ Query إلا لو فيه ID للمحادثة
+    enabled: !!conversationId,
   });
 
   useEffect(() => {
@@ -50,7 +56,7 @@ export function useChatMessages(conversationId: string) {
 
     const channel = supabase
       .channel(`chat-${conversationId}`)
-      
+
       .on(
         "postgres_changes",
         {
@@ -62,7 +68,6 @@ export function useChatMessages(conversationId: string) {
         async (payload) => {
           if (!isMounted) return;
 
-          // جلب بيانات المُرسل
           const { data: fullMessage } = await supabase
             .from("messages")
             .select(`
@@ -73,24 +78,22 @@ export function useChatMessages(conversationId: string) {
 
           if (!fullMessage) return;
 
-          const formattedMessage: ChatMessage = {
+          const formattedMessage = {
             id: fullMessage.id,
             conversation_id: fullMessage.conversation_id,
             sender_id: fullMessage.sender_id,
             content: fullMessage.content,
             is_read: fullMessage.is_read,
             created_at: fullMessage.created_at,
-            sender: Array.isArray(fullMessage.sender) ? fullMessage.sender[0] : fullMessage.sender,
-          };
+            sender: Array.isArray(fullMessage.sender) ? (fullMessage.sender as unknown[])[0] : fullMessage.sender,
+          } as ChatMessage;
 
-          // تحديث كاش الرسائل
           queryClient.setQueryData<InfiniteData<ChatMessage[]>>(queryKey, (oldData) => {
             if (!oldData) return oldData;
 
-            const alreadyExists = oldData.pages.some((page) => {
-              return page.some((msg) => msg.id === formattedMessage.id);
-            });
-
+            const alreadyExists = oldData.pages.some((page) =>
+              page.some((msg) => msg.id === formattedMessage.id)
+            );
             if (alreadyExists) return oldData;
 
             return {
@@ -99,30 +102,38 @@ export function useChatMessages(conversationId: string) {
             };
           });
 
-          // تحديث كاش القائمة الجانبية (Conversations)
           queryClient.setQueryData<ConversationListItem[]>(["conversations"], (oldConversations) => {
             if (!oldConversations) return oldConversations;
 
-            return oldConversations.map((conversation) => {
-              if (conversation.id === conversationId) {
+            return oldConversations
+              .map((conversation) => {
+                if (conversation.id !== conversationId) return conversation;
+
+                const incomingDate = new Date(formattedMessage.created_at);
+                const currentLastDate = conversation.lastMessage?.created_at
+                  ? new Date(conversation.lastMessage.created_at)
+                  : null;
+
                 return {
                   ...conversation,
-                  lastMessage: formattedMessage,
-                  created_at: formattedMessage.created_at,
+                  lastMessage: !currentLastDate || incomingDate > currentLastDate
+                    ? { content: formattedMessage.content, created_at: formattedMessage.created_at, is_read: formattedMessage.is_read, sender_id: formattedMessage.sender_id }
+                    : conversation.lastMessage,
+                  created_at: incomingDate > new Date(conversation.created_at)
+                    ? formattedMessage.created_at
+                    : conversation.created_at,
                   unreadCount: (conversation.unreadCount || 0) + 1,
                 };
-              }
-              return conversation;
-            }).sort((a, b) => {
-              const dateA = a.lastMessage?.created_at || a.created_at;
-              const dateB = b.lastMessage?.created_at || b.created_at;
-              return new Date(dateB).getTime() - new Date(dateA).getTime();
-            });
+              })
+              .sort((a, b) => {
+                const dateA = a.lastMessage?.created_at || a.created_at;
+                const dateB = b.lastMessage?.created_at || b.created_at;
+                return new Date(dateB).getTime() - new Date(dateA).getTime();
+              });
           });
         }
       )
-      
-      // ⚡ 2. الاستماع لحدث تحديث الرسالة (UPDATE) - عشان علامة الصح
+
       .on(
         "postgres_changes",
         {
@@ -134,10 +145,8 @@ export function useChatMessages(conversationId: string) {
         (payload) => {
           if (!isMounted) return;
 
-          // تحديث حالة الرسالة في الكاش (مثلاً: قلبها من غير مقروءة لمقروءة)
           queryClient.setQueryData<InfiniteData<ChatMessage[]>>(queryKey, (oldData) => {
             if (!oldData) return oldData;
-
             return {
               ...oldData,
               pages: oldData.pages.map((page) =>
@@ -153,7 +162,7 @@ export function useChatMessages(conversationId: string) {
       isMounted = false;
       supabase.removeChannel(channel);
     };
-  }, [queryClient, conversationId, queryKey]);
+  }, [queryClient, conversationId]);
 
   const messages = data?.pages.flat() || [];
 
@@ -164,9 +173,7 @@ export function useChatMessages(conversationId: string) {
     isFetchingNextPage,
     isLoading,
   };
-
 }
-
 
 export function useSendMessage() {
   const queryClient = useQueryClient();

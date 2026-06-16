@@ -1,6 +1,6 @@
 # 📱 Socially — Modern Social Media Platform
 
-> A full-stack, real-time social media application built with Next.js 15, Supabase, and TypeScript — featuring cursor-based pagination, optimistic UI updates, a bi-directional friendship system, and a fully integrated notification engine.
+> A full-stack, real-time social media application built with Next.js 16, Supabase, and TypeScript — featuring cursor-based pagination, optimistic UI updates, a bi-directional friendship system, real-time chat with presence indicators, and a fully integrated notification engine.
 
 <p align="center">
   <img src="https://img.shields.io/badge/Next.js-16.0-000000?logo=next.js&style=flat-square" alt="Next.js 16">
@@ -19,7 +19,7 @@
 
 **Socially** is a production-grade social media platform that delivers a rich, real-time user experience. It combines the **performance of Server-Side Rendering** (Next.js App Router) with the **scalability of Supabase** (PostgreSQL + Auth + Realtime) and the **type safety of strict TypeScript**.
 
-The platform supports the full social-media lifecycle — user registration, post creation, image uploads, a **cursor-based infinite-scroll feed**, **optimistic like/unlike toggling**, **resharing with nested author profiles**, **real-time comments**, a **friend system** (requests, suggestions, accept/reject), and a **notification engine** with read/unread tracking. The entire UI is **Arabic-first (RTL)** with a polished dark/light theme.
+The platform supports the full social-media lifecycle — user registration, post creation, image uploads, a **cursor-based infinite-scroll feed**, **optimistic like/unlike toggling** with cross-query cache sync, **resharing with nested author profiles**, **real-time comments**, a **friend system** (requests, suggestions, accept/reject), **real-time chat** with conversations, and an **online presence system** (friends-only). The entire UI is **Arabic-first (RTL)** with a polished dark/light theme.
 
 ---
 
@@ -30,6 +30,8 @@ The platform supports the full social-media lifecycle — user registration, pos
 - **🔄 Resharing System** — Share existing posts with nested author profile fetching via deep PostgREST joins, supporting multi-level shared-post rendering.
 - **💬 Real-Time Comments** — Server Actions for comment creation with live updates via Supabase Realtime subscriptions.
 - **👥 Friends Management** — Dedicated friends page with **URL-state filtering** (Friend Requests, Suggestions, Friends List tabs), send/cancel/accept/remove actions, and suggested-friend algorithms.
+- **💬 Real-Time Chat** — Private conversations with infinite-scroll message history, real-time message delivery via Realtime subscriptions, read receipts, and unread counts.
+- **🟢 Online Presence** — Live online/offline indicators via Supabase Realtime Presence, **visible only to friends** (privacy-preserving).
 - **🔔 Notification System** — Auto-generated notifications for likes, comments, friend requests, and shares with cursor-based pagination, read/unread state, and bulk mark-as-read.
 - **🌙 Dark/Light Theme** — System-aware theming via `next-themes` with smooth transitions.
 - **📱 Responsive RTL UI** — Arabic-first interface with mobile sidebar, sticky navigation, and framer-motion micro-interactions.
@@ -52,7 +54,7 @@ The platform supports the full social-media lifecycle — user registration, pos
 | **Database** | [Supabase](https://supabase.com/) (PostgreSQL 15, PostgREST) |
 | **Auth** | [Supabase Auth](https://supabase.com/auth) (SSR cookie-based) |
 | **Storage** | [Supabase Storage](https://supabase.com/storage) (user avatars, post images) |
-| **Realtime** | [Supabase Realtime](https://supabase.com/realtime) (post/notification subscriptions) |
+| **Realtime** | [Supabase Realtime](https://supabase.com/realtime) (post/notification subscriptions, chat, presence) |
 | **Date Formatting** | [date-fns 4](https://date-fns.org/) (Arabic locale) |
 | **Notifications (UI)** | [Sonner](https://sonner.emilkowal.ski/) (toast notifications) |
 | **Package Manager** | npm |
@@ -101,9 +103,14 @@ src/
 │   │   └── components/            #   AvatarUploader, EditProfileDialog
 │   ├── search/                    # Global search feature
 │   │   └── actions.ts             #   searchProfilesAction
-│   ├── chat/                      # Chat (stub — coming soon)
-│   │   ├── components/
-│   │   └── hooks/
+│   ├── chat/                      # Real-time chat feature
+│   │   ├── actions.ts             #   Server Actions (getOrCreateConversation, sendMessage, …)
+│   │   ├── components/            #   ChatArea, ConversationList, MessageInput, MessageButton
+│   │   └── hooks/                 #   useChat.ts (query/mutation hooks + realtime)
+│   ├── online/                    # Online presence feature
+│   │   ├── actions.ts             #   Server Action (getFriendIdsAction)
+│   │   ├── components/            #   OnlineDot, PresenceInitializer
+│   │   └── hooks/                 #   usePresence, useFriendIds
 │   └── stories/                   # Stories feature
 │       └── components/            # StoryCarousel
 │
@@ -121,7 +128,8 @@ src/
 │   └── utils.ts                   # cn() utility (clsx + tailwind-merge)
 │
 ├── store/
-│   └── useUIStore.ts              # Zustand store (dialog state, connectivity, mobile sidebar)
+│   ├── useUIStore.ts              # Zustand store (dialog state, connectivity, mobile sidebar)
+│   └── useOnlineStore.ts          # Zustand store (online user IDs set via Supabase Presence)
 │
 ├── hooks/
 │   └── useDebounce.ts             # Generic debounce hook
@@ -138,8 +146,9 @@ src/
 |---|---|
 | **Server Actions** for mutations | Enables cookie-aware requests without building a REST API; fully compatible with Supabase SSR |
 | **Cursor-based pagination** over offset | Prevents duplicate/skipped posts on concurrent inserts — uses `lt("created_at", cursor)` |
-| **React Query** for server state | Automatic cache invalidation, background refetching, and optimistic updates |
-| **Zustand** for client state | Lightweight, TypeScript-native store for UI-specific state (dialog open, sidebar, online status) |
+| **React Query** for server state | Automatic cache invalidation, background refetching, optimistic updates, and **cross-query cache sync** (likes/comments update all feed queries via `queryClient.getQueryCache().findAll()`) |
+| **Zustand** for client state | Lightweight, TypeScript-native store for UI-specific state (dialog open, sidebar, online presence set) |
+| **Supabase Presence** for online status | All authenticated users join an `online-users` Realtime channel; presence join/leave events sync to Zustand store; UI filters by friendship |
 | **FSD over traditional pages router** | Enforces domain boundaries; prevents circular imports; scales with team size |
 | **`React.cache(getProfile)`** | Deduplicates profile queries per server request — eliminates N+1 profile lookups |
 | **Zero `any` policy** | Full strict TypeScript coverage; every Supabase response is typed via normalizer utilities |
@@ -188,6 +197,79 @@ The `notifications` table stores per-action events (`like`, `comment`, `friend_r
 
 ---
 
+## 💬 Real-Time Chat
+
+The chat feature provides **private one-on-one conversations** with real-time message delivery:
+
+### Data Model
+
+| Table | Purpose |
+|-------|---------|
+| `conversations` | `id`, `user_one_id`, `user_two_id`, `created_at` — sorted pair (user_one_id < user_two_id) prevents duplicates |
+| `messages` | `id`, `conversation_id`, `sender_id`, `content`, `is_read`, `created_at` — each message links back to a conversation |
+
+### Key Design Decisions
+
+- **Sorted user pair** — `user_one_id < user_two_id` ensures consistent ordering, preventing duplicate conversations regardless of who initiates
+- **Cursor-based message pagination** — Messages are fetched oldest-first with `lt("created_at", cursor)` for infinite scroll upward
+- **Realtime INSERT subscription** — New messages from the other participant appear instantly; a fetch-after-INSERT pattern ensures full sender profile data
+- **Optimistic sent messages** — `useMutation` prepends the sent message to the cache immediately; the realtime handler deduplicates by message ID
+- **Conversation list** — SQL JOINs (`user_one:user_one_id(...)`) fetch both participant profiles in a single query (no N+1), with `normalizeProfile()` for each
+
+### Chat Architecture
+
+```typescript
+// Dedicated participant query (not scanning the full conversation list)
+export function useConversationParticipant(conversationId: string) {
+  return useQuery({
+    queryKey: ["conversation-participant", conversationId],
+    queryFn: async () => {
+      const result = await getConversationParticipantAction(conversationId);
+      if (!result.success) throw new Error(result.error);
+      return result.data as ChatParticipant;
+    },
+    enabled: !!conversationId,
+  });
+}
+```
+
+---
+
+## 🟢 Online Presence
+
+The presence system uses **Supabase Realtime Presence** (not Postgres Changes) to track which users are currently active:
+
+### How It Works
+
+1. **`PresenceInitializer`** (rendered in the root layout) calls `usePresence()`
+2. `usePresence` subscribes to the `online-users` Realtime channel
+3. On subscribe, the current user's `user_id` is broadcast via `channel.track({ user_id })`
+4. Presence `sync` / `join` / `leave` events update a `Set<string>` in **Zustand** (`useOnlineStore`)
+5. **`OnlineDot`** component checks the store + friend status before showing online status
+
+### Friends-Only Visibility
+
+- `getFriendIdsAction` fetches the current user's accepted friend IDs
+- `useFriendIds` caches them via React Query (1-minute stale time)
+- `OnlineDot` renders **green** only if `onlineIds.has(userId) && friendIds.includes(userId)`; otherwise **gray**
+- This is a **UI-level enforcement** — the presence data itself is channel-wide, but only friends see the indicator
+
+```typescript
+// OnlineDot component logic
+const isOnline = onlineIds.has(userId);
+const isFriend = friendIds?.includes(userId);
+const showOnline = isOnline && isFriend;
+
+return (
+  <span className={cn(
+    "absolute bottom-0 right-0 block h-3 w-3 rounded-full ring-2 ring-background",
+    showOnline ? "bg-green-500" : "bg-gray-400",
+  )} />
+);
+```
+
+---
+
 ## 🚀 Getting Started
 
 ### Prerequisites
@@ -226,16 +308,17 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
 
 4. **Initialize the database schema**
 
-Run the SQL migration from `supabase/migrations/` (if available) or create the following tables in the **Supabase SQL Editor**:
+Run the following SQL in the **Supabase SQL Editor** to create all required tables:
 
 ```sql
--- Core tables needed (simplified)
+-- Profiles (auto-created via auth.users trigger)
 CREATE TABLE profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   full_name TEXT,
   avatar_url TEXT
 );
 
+-- Posts
 CREATE TABLE posts (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -245,12 +328,14 @@ CREATE TABLE posts (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Likes
 CREATE TABLE likes (
   post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
   user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   PRIMARY KEY (post_id, user_id)
 );
 
+-- Comments
 CREATE TABLE comments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   post_id UUID NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
@@ -259,15 +344,18 @@ CREATE TABLE comments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE friend_requests (
+-- Friendships (bi-directional, status-based)
+CREATE TABLE friendships (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   sender_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   receiver_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected')),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ,
   UNIQUE (sender_id, receiver_id)
 );
 
+-- Notifications
 CREATE TABLE notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   receiver_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
@@ -278,9 +366,29 @@ CREATE TABLE notifications (
   is_read BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Conversations (sorted user pair prevents duplicates)
+CREATE TABLE conversations (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_one_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  user_two_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Chat messages
+CREATE TABLE messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  sender_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  content TEXT NOT NULL,
+  is_read BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 ```
 
 > **Enable Row-Level Security (RLS)** on all tables via the Supabase Dashboard and add policies appropriate to your use case.
+>
+> **Enable Realtime** on the `posts`, `messages`, and `conversations` tables: **Supabase Dashboard → Database → Replication → enable Realtime** for these tables. The online presence feature uses Supabase Realtime Presence which works out of the box — no table configuration needed.
 
 5. **Run the development server**
 

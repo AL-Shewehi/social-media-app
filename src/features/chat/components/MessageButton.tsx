@@ -24,10 +24,8 @@ export default function MessageButton({ targetUserId, className, variant = "defa
 
     const result = await getOrCreateConversationAction(targetUserId);
 
-    const conversationId = result.data?.conversationId || (result as any).conversationId;
-
-    if (result.success && conversationId) {
-      router.push(`/chat/${conversationId}`);
+    if (result.success && result.data) {
+      router.push(`/chat/${result.data}`);
     } else {
       toast.error(result.error || "حدث خطأ أثناء فتح المحادثة");
       setIsPending(false);

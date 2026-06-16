@@ -103,7 +103,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
 
       {/* ─── الجزء السفلي ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        <div className="lg:col-span-1 bg-card border rounded-xl p-4 space-y-3 shadow-sm sticky top-20">
+        <div className="lg:col-span-1 bg-card border rounded-xl p-4 space-y-3 shadow-sm lg:sticky top-20">
           <h3 className="font-bold text-lg text-foreground">نبذة شخصية</h3>
           <p className="text-sm text-muted-foreground leading-relaxed">
             {isMyOwnProfile

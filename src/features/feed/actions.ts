@@ -225,9 +225,9 @@ export async function fetchProfilePostsAction(profileUserId: string, cursor?: st
         profiles!posts_user_id_fkey (id, full_name, avatar_url),
         comments (id, content, created_at, user_id, profiles (id, full_name, avatar_url)),
         likes (count),
-        shared_post:posts!shared_post_id (
+        shared_post:shared_post_id (
           id, content, image_url,
-          profiles!posts_user_id_fkey (id, full_name, avatar_url)
+          profiles:profiles!posts_user_id_fkey (id, full_name, avatar_url)
         )
       `)
       .eq("user_id", profileUserId)
@@ -271,9 +271,9 @@ export async function fetchMorePostsAction(cursor: string | undefined, allowedUs
         profiles!posts_user_id_fkey (id, full_name, avatar_url),
         comments (id, content, created_at, user_id, profiles (id, full_name, avatar_url)),
         likes (count),
-        shared_post:posts!shared_post_id (
+        shared_post:shared_post_id (
           id, content, image_url,
-          profiles!posts_user_id_fkey (id, full_name, avatar_url)
+          profiles:profiles!posts_user_id_fkey (id, full_name, avatar_url)
         )
       `)
       .in("user_id", allowedUserIds.length > 0 ? allowedUserIds : ['00000000-0000-0000-0000-000000000000'])

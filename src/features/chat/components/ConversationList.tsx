@@ -3,6 +3,7 @@
 import { useConversations } from "../hooks/useChat";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatRelativeTime } from "@/lib/formatDate";
+import OnlineDot from "@/features/online/components/OnlineDot";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MessageSquare, Loader2 } from "lucide-react";
@@ -59,12 +60,15 @@ export default function ConversationList() {
               isActive ? "bg-secondary/80 border-l-4 border-l-primary" : "border-l-4 border-l-transparent"
             )}
           >
-            <Avatar className="h-12 w-12 border border-border/50 shadow-sm">
-              <AvatarImage src={participant.avatar_url || ""} alt={participant.full_name || "User"} />
-              <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                {fallbackLetter}
-              </AvatarFallback>
-            </Avatar>
+            <div className="relative shrink-0">
+              <Avatar className="h-12 w-12 border border-border/50 shadow-sm">
+                <AvatarImage src={participant.avatar_url || ""} alt={participant.full_name || "User"} />
+                <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                  {fallbackLetter}
+                </AvatarFallback>
+              </Avatar>
+              <OnlineDot userId={participant.id} />
+            </div>
 
             <div className="flex-1 min-w-0 flex flex-col justify-center">
               <div className="flex items-center justify-between mb-1">

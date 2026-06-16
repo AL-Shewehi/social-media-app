@@ -3,6 +3,7 @@ import Sidebar from "@/components/shared/Sidebar";
 import { requireUser } from "@/lib/supabase/server";
 import { getProfile } from "@/lib/supabase/server";
 import OfflineBanner from "@/components/shared/OfflineBanner";
+import PresenceInitializer from "@/features/online/components/PresenceInitializer";
 import { searchProfilesAction } from "@/features/search/actions";
 import { fetchNotificationsAction, markNotificationsAsReadAction } from "@/features/notifications/actions";
 
@@ -16,6 +17,7 @@ export default async function MainLayout({
 
   return (
     <div className="min-h-screen bg-background ">
+      <PresenceInitializer />
       <OfflineBanner />
       <Navbar 
         user={profile} 

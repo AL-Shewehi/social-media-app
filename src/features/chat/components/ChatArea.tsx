@@ -1,15 +1,17 @@
 "use client";
 
-import { useChatMessages, useConversations } from "../hooks/useChat";
+import { useChatMessages, useConversationParticipant } from "../hooks/useChat";
 import MessageInput from "./MessageInput";
 import { useEffect, useRef } from "react";
 import { Loader2, ArrowRight, Check, CheckCheck } from "lucide-react";
 import { formatRelativeTime } from "@/lib/formatDate";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import OnlineDot from "@/features/online/components/OnlineDot";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { markMessagesAsReadAction } from "../actions";
 import { useQueryClient } from "@tanstack/react-query";
+import type { ConversationListItem } from "@/types/database.types";
 
 export default function ChatArea({
   conversationId,
@@ -25,17 +27,15 @@ export default function ChatArea({
     isFetchingNextPage,
     isLoading,
   } = useChatMessages(conversationId);
-  const { data: conversations } = useConversations();
+  const { data: participant } = useConversationParticipant(conversationId);
   const queryClient = useQueryClient();
 
-  const conversation = conversations?.find((c) => c.id === conversationId);
-  const participant = conversation?.participant;
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   //  جعل الرسائل مقروءة عند فتح الشات
   useEffect(() => {
     if (conversationId) {
-      queryClient.setQueryData<any[]>(["conversations"], (old) => {
+      queryClient.setQueryData<ConversationListItem[]>(["conversations"], (old) => {
         if (!old) return old;
         return old.map((convo) =>
           convo.id === conversationId ? { ...convo, unreadCount: 0 } : convo,
@@ -48,7 +48,7 @@ export default function ChatArea({
         queryClient.invalidateQueries({ queryKey: ["conversations"] });
       });
     }
-  }, [conversationId, queryClient, messages.length]);
+  }, [conversationId, queryClient]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -75,12 +75,15 @@ export default function ChatArea({
         {participant ? (
           <>
             <Link href={`/profile/${participant.id}`} className="flex items-center gap-3">
-              <Avatar className="h-10 w-10 border border-border/50 shadow-sm">
-                <AvatarImage src={participant.avatar_url || ""} />
-                <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                  {participant.full_name?.charAt(0).toUpperCase() || "?"}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative shrink-0">
+                <Avatar className="h-10 w-10 border border-border/50 shadow-sm">
+                  <AvatarImage src={participant.avatar_url ?? undefined} />
+                  <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                    {participant.full_name?.charAt(0).toUpperCase() || "?"}
+                  </AvatarFallback>
+                </Avatar>
+                <OnlineDot userId={participant.id} />
+              </div>
               <div className="font-semibold text-[15px]">
                 {participant.full_name}
               </div>
