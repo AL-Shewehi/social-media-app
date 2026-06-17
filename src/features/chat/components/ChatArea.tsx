@@ -27,7 +27,7 @@ export default function ChatArea({
     hasNextPage,
     isFetchingNextPage,
     isLoading,
-  } = useChatMessages(conversationId);
+  } = useChatMessages(conversationId, currentUserId);
   const { data: participant } = useConversationParticipant(conversationId);
   const queryClient = useQueryClient();
 

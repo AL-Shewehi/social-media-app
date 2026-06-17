@@ -30,7 +30,7 @@ export function useConversationParticipant(conversationId: string) {
   });
 }
 
-export function useChatMessages(conversationId: string) {
+export function useChatMessages(conversationId: string, currentUserId: string) {
   const queryClient = useQueryClient();
   const queryKey = ["chat-messages", conversationId];
 
@@ -122,7 +122,9 @@ export function useChatMessages(conversationId: string) {
                   created_at: incomingDate > new Date(conversation.created_at)
                     ? formattedMessage.created_at
                     : conversation.created_at,
-                  unreadCount: (conversation.unreadCount || 0) + 1,
+                  unreadCount: formattedMessage.sender_id !== currentUserId
+                    ? (conversation.unreadCount || 0) + 1
+                    : conversation.unreadCount,
                 };
               })
               .sort((a, b) => {
