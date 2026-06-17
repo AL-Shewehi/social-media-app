@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { formatRelativeTime } from "@/lib/formatDate";
+import { getNotificationDetails } from "@/lib/notification-utils";
 import Link from "next/link";
 
 export interface NotificationActor {
@@ -88,36 +89,6 @@ export default function NotificationsDropdown({
       setUnreadCount(0);
       await onMarkAsRead();
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    }
-  };
-
-  const getNotificationDetails = (type: string) => {
-    switch (type) {
-      case "like":
-        return {
-          icon: <Heart className="h-4 w-4 text-primary" />,
-          text: "أعجب بمنشورك",
-        };
-      case "comment":
-        return {
-          icon: <MessageCircle className="h-4 w-4 text-green-500" />,
-          text: "علق على منشورك",
-        };
-      case "friend_request":
-        return {
-          icon: <UserPlus className="h-4 w-4 text-blue-500" />,
-          text: "أرسل لك طلب صداقة",
-        };
-      case "share":
-        return {
-          icon: <Share2 className="h-4 w-4 text-purple-500" />,
-          text: "شارك منشورك",
-        };
-      default:
-        return {
-          icon: <Bell className="h-4 w-4 text-muted-foreground" />,
-          text: "تفاعل معك",
-        };
     }
   };
 

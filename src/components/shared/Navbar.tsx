@@ -22,7 +22,7 @@ import { useUIStore } from "@/store/useUIStore";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useState, useEffect, useRef } from "react";
 import NotificationsDropdown from "./NotificationsDropdown";
-import UnreadBadge from "@/features/chat/components/UnreadBadge";
+import UnreadBadge from "./UnreadBadge";
 
 interface NavbarProps {
   user: Profile | null;

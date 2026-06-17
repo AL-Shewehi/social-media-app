@@ -42,10 +42,11 @@ export type Post = {
 };
 
 
-export type PostCardPost = Omit<Post, 'likes'> & {
+export type PostCardPost = Omit<Post, 'likes' | 'shared_post'> & {
   likesCount?: number;
   isLikedByMe?: boolean;
   likes?: Like[] | null;
+  shared_post: SharedPost | null;
 };
 
 export type PostCardProps = {

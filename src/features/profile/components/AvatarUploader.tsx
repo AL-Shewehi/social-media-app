@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Camera, Loader2 } from "lucide-react";
-import { createBrowserClient } from "@supabase/ssr";
+import { createClient } from "@/lib/supabase/client";
 import { updateAvatarAction } from "@/features/profile/actions";
 import { toast } from "sonner";
 
@@ -47,10 +47,7 @@ export default function AvatarUploader({
     setAvatarPreview(localPreviewUrl);
 
     try {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      );
+      const supabase = createClient();
 
       const {
         data: { user },

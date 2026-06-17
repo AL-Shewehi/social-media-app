@@ -51,10 +51,10 @@ export default function Sidebar({ user }: SidebarProps) {
             )}
 
             <aside className={cn(
-                "hidden lg:flex flex-col w-full md:max-w-75 h-[calc(100vh-3.5rem)] sticky top-14 self-start overflow-y-auto px-2 bg-transparent select-none scrollbar-thin border-l py-2",
+                "hidden lg:flex flex-col w-full md:max-w-75 h-[calc(100vh-5rem)] sticky top-14 self-start overflow-y-auto px-2 bg-background select-none scrollbar-thin py-2",
                 
                 // كلاسات الموبايل (تحويله لـ Drawer متحرك يظهر من اليمين بناءً على الـ Store)
-                "fixed top-0 right-0 z-50 h-full w-full md:w-72 bg-card border-l shadow-2xl transition-transform duration-300 ease-in-out lg:sticky lg:top-14 lg:z-0 lg:h-[calc(100vh-3.5rem)] lg:w-full lg:shadow-none p-4 lg:p-2",
+                "fixed top-0 right-0 z-50 h-full w-full md:w-72 bg-background  shadow-2xl transition-transform duration-300 ease-in-out lg:sticky lg:top-14 lg:z-0 lg:h-[calc(100vh-5rem)] lg:w-full lg:shadow-none p-4 lg:p-2",
                 isMobileOpen ? "translate-x-0 flex" : "translate-x-full lg:translate-x-0"
             )}>
 

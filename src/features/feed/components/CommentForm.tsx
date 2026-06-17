@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { createCommentAction } from "@/features/feed/actions";
 import { useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { feedKeys } from "@/lib/query-key-factory";
 import type { Profile, Comment, PostCardPost } from "@/types/database.types";
 import { toast } from "sonner";
 import { Send } from "lucide-react";
@@ -38,7 +39,7 @@ export default function CommentForm({ postId, user }: CommentFormProps) {
 
       queryClient
         .getQueryCache()
-        .findAll({ queryKey: ["feed"] })
+        .findAll({ queryKey: feedKeys.all })
         .forEach((query) => {
           queryClient.setQueryData<InfiniteData<PostCardPost[]>>(
             query.queryKey,

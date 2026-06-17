@@ -3,6 +3,7 @@ import type { Profile } from "@/types/database.types";
 import RealtimeFeedList from "./RealtimeFeedList";
 import FeedErrorBoundary from "@/components/shared/FeedErrorBoundary";
 import { formatPosts, type RawPostData } from "@/lib/formatPosts";
+import { POST_SELECT, fetchUserLikedPostIds } from "@/lib/queries/posts";
 
 interface FeedListProps {
   currentUserProfile?: Profile | null;
@@ -46,43 +47,7 @@ export default async function FeedList({ currentUserProfile }: FeedListProps) {
 
   const { data: posts, error } = await supabase
     .from("posts")
-    .select(
-      `
-  id,
-  content,
-  created_at,
-  user_id,
-  image_url,
-  shared_post_id,
-  profiles!posts_user_id_fkey (
-    id,
-    full_name,
-    avatar_url
-  ),
-  comments (
-    id,
-    content,
-    created_at,
-    user_id,
-    profiles (
-      id,
-      full_name,
-      avatar_url
-    )
-  ),
-  likes (count),
-  shared_post:shared_post_id (
-    id,
-    content,
-    image_url,
-    profiles:profiles!posts_user_id_fkey (
-      id,
-      full_name,
-      avatar_url
-    )
-  )
-`,
-    )
+    .select(POST_SELECT)
     .in("user_id", allowedUserIds)
     .order("created_at", { ascending: false })
     .order("created_at", { referencedTable: "comments", ascending: true })
@@ -97,23 +62,8 @@ export default async function FeedList({ currentUserProfile }: FeedListProps) {
     );
   }
 
-  //   معرفات البوستات اللي "أنا" عملتلها لايك فقط
   const postIds = posts?.map((p) => p.id) || [];
-  let likedPostIds = new Set<string>();
-
-  if (postIds.length > 0) {
-    const { data: userLikes, error: likesError } = await supabase
-      .from("likes")
-      .select("post_id")
-      .eq("user_id", user.id)
-      .in("post_id", postIds);
-
-    if (likesError) {
-      console.error("🚨 خطأ أثناء جلب إعجابات المستخدم:", likesError.message);
-    } else {
-      likedPostIds = new Set(userLikes?.map((l) => l.post_id) || []);
-    }
-  }
+  const likedPostIds = await fetchUserLikedPostIds(supabase, user.id, postIds);
 
 const formattedPosts = formatPosts((posts as unknown as RawPostData[]) || [], likedPostIds);
   return (

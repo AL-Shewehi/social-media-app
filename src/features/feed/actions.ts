@@ -2,8 +2,9 @@
 import { revalidatePath } from "next/cache"
 import { requireUser } from "@/lib/supabase/server";
 import { withErrorHandling } from "@/lib/with-error-handling";
+import { formatPosts, type RawPostData } from "@/lib/formatPosts";
+import { POST_SELECT, fetchUserLikedPostIds } from "@/lib/queries/posts";
 import { normalizeProfile } from "@/lib/normalize";
-import { formatPosts } from "@/lib/formatPosts";
 
 
 
@@ -220,16 +221,7 @@ export async function fetchProfilePostsAction(profileUserId: string, cursor?: st
 
     let query = supabase
       .from("posts")
-      .select(`
-        id, content, created_at, user_id, image_url, shared_post_id,
-        profiles!posts_user_id_fkey (id, full_name, avatar_url),
-        comments (id, content, created_at, user_id, profiles (id, full_name, avatar_url)),
-        likes (count),
-        shared_post:shared_post_id (
-          id, content, image_url,
-          profiles:profiles!posts_user_id_fkey (id, full_name, avatar_url)
-        )
-      `)
+      .select(POST_SELECT)
       .eq("user_id", profileUserId)
       .order("created_at", { ascending: false })
       .order("created_at", { referencedTable: "comments", ascending: true })
@@ -243,16 +235,7 @@ export async function fetchProfilePostsAction(profileUserId: string, cursor?: st
     if (error) throw error;
 
     const postIds = posts?.map((p) => p.id) || [];
-    let likedPostIds = new Set<string>();
-
-    if (postIds.length > 0) {
-      const { data: userLikes } = await supabase
-        .from("likes")
-        .select("post_id")
-        .eq("user_id", user.id)
-        .in("post_id", postIds);
-      likedPostIds = new Set(userLikes?.map((l) => l.post_id) || []);
-    }
+    const likedPostIds = await fetchUserLikedPostIds(supabase, user.id, postIds);
 
     return formatPosts(posts || [], likedPostIds);
   }, "حدث خطأ في جلب منشورات المستخدم");
@@ -266,22 +249,12 @@ export async function fetchMorePostsAction(cursor: string | undefined, allowedUs
 
     let query = supabase
       .from("posts")
-      .select(`
-        id, content, created_at, user_id, image_url, shared_post_id,
-        profiles!posts_user_id_fkey (id, full_name, avatar_url),
-        comments (id, content, created_at, user_id, profiles (id, full_name, avatar_url)),
-        likes (count),
-        shared_post:shared_post_id (
-          id, content, image_url,
-          profiles:profiles!posts_user_id_fkey (id, full_name, avatar_url)
-        )
-      `)
+      .select(POST_SELECT)
       .in("user_id", allowedUserIds.length > 0 ? allowedUserIds : ['00000000-0000-0000-0000-000000000000'])
       .order("created_at", { ascending: false })
       .order("created_at", { referencedTable: "comments", ascending: true })
       .limit(pageSize);
 
-    //  Cursor-based pagination: نجلب البوستات الأقدم من التاريخ الممرر
     if (cursor) {
       query = query.lt("created_at", cursor);
     }
@@ -291,20 +264,31 @@ export async function fetchMorePostsAction(cursor: string | undefined, allowedUs
     if (error) throw error;
 
     const postIds = posts?.map(p => p.id) || [];
-    let likedPostIds = new Set<string>();
+    const likedPostIds = await fetchUserLikedPostIds(supabase, user.id, postIds);
 
-    if (postIds.length > 0) {
-      const { data: userLikes } = await supabase
-        .from("likes")
-        .select("post_id")
-        .eq("user_id", user.id)
-        .in("post_id", postIds);
-      likedPostIds = new Set(userLikes?.map(l => l.post_id) || []);
-    }
-
-        const formattedPosts = formatPosts(posts || [], likedPostIds);
-
+    const formattedPosts = formatPosts(posts || [], likedPostIds);
 
     return formattedPosts;
   }, "فشل جلب المزيد من المنشورات");
+}
+
+export async function fetchSinglePostAction(postId: string) {
+  return withErrorHandling(async () => {
+    const { supabase, user } = await requireUser();
+
+    const { data: post, error } = await supabase
+      .from("posts")
+      .select(POST_SELECT)
+      .eq("id", postId)
+      .order("created_at", { referencedTable: "comments", ascending: true })
+      .single();
+
+    if (error) throw error;
+    if (!post) throw new Error("المنشور غير موجود");
+
+    const likedPostIds = await fetchUserLikedPostIds(supabase, user.id, [postId]);
+
+    const formatted = formatPosts([post as unknown as RawPostData], likedPostIds);
+    return formatted[0] || null;
+  }, "فشل جلب المنشور");
 }

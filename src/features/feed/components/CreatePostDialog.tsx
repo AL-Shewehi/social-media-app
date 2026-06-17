@@ -14,7 +14,7 @@ import { Image, Smile, Video, X } from "lucide-react";
 import { createPostAction } from "@/features/feed/actions";
 import { toast } from "sonner";
 import type { Profile } from "@/types/database.types";
-import { createBrowserClient } from "@supabase/ssr";
+import { createClient } from "@/lib/supabase/client";
 
 interface CreatePostDialogProps {
   user: Profile | null;
@@ -99,10 +99,7 @@ export default function CreatePostDialog({
       return null;
     }
 
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    );
+    const supabase = createClient();
 
     const fileExt = file.name.split(".").pop()?.toLowerCase();
     const fileName = `${crypto.randomUUID()}.${fileExt}`;

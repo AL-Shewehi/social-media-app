@@ -11,6 +11,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { markMessagesAsReadAction } from "../actions";
 import { useQueryClient } from "@tanstack/react-query";
+import { chatKeys } from "@/lib/query-key-factory";
 import type { ConversationListItem } from "@/types/database.types";
 
 export default function ChatArea({
@@ -45,7 +46,7 @@ export default function ChatArea({
       // إرسال طلب التحديث للسيرفر
       markMessagesAsReadAction(conversationId).then(() => {
         // تأكيد التحديث من السيرفر
-        queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        queryClient.invalidateQueries({ queryKey: chatKeys.conversations });
       });
     }
   }, [conversationId, queryClient]);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useConversations } from "../hooks/useChat";
+import { useConversations } from "@/features/chat/hooks/useChat";
 
 export default function UnreadBadge() {
   const { data: conversations, isLoading } = useConversations();

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/supabase/server";
 import { withErrorHandling } from "@/lib/with-error-handling";
 import { formatPosts } from "@/lib/formatPosts";
+import { POST_SELECT, fetchUserLikedPostIds } from "@/lib/queries/posts";
 
 
 export async function getProfilePageData(profileUserId: string) {
@@ -21,16 +22,9 @@ export async function getProfilePageData(profileUserId: string) {
       return { error: "هذا الحساب غير موجود أو تم حذفه." };
     }
 
-    //  جلب المنشورات بكامل تفاصيلها
     const { data: posts, error: postsError } = await supabase
       .from("posts")
-      .select(`
-        id, content, created_at, user_id, image_url, shared_post_id,
-        profiles!posts_user_id_fkey (id, full_name, avatar_url),
-        comments (id, content, created_at, user_id, profiles (id, full_name, avatar_url)),
-        likes (count),
-        shared_post:shared_post_id (id, content, image_url, profiles:profiles!posts_user_id_fkey (id, full_name, avatar_url))
-      `)
+      .select(POST_SELECT)
       .eq("user_id", profileUserId)
       .order("created_at", { ascending: false });
 
@@ -39,26 +33,14 @@ export async function getProfilePageData(profileUserId: string) {
       return { error: "حدث خطأ في جلب المنشورات." };
     }
 
-    //  استعلام علاقة الصداقة)
     const { data: friendshipData } = await supabase
       .from("friendships")
       .select("id, sender_id, receiver_id, status")
       .or(`and(sender_id.eq.${user.id},receiver_id.eq.${profileUserId}),and(sender_id.eq.${profileUserId},receiver_id.eq.${user.id})`)
       .maybeSingle();
 
-    // جلب إعجابات المستخدم الحالي وتنسيق المنشورات
     const postIds = posts?.map((p) => p.id) || [];
-    let likedPostIds = new Set<string>();
-
-    if (postIds.length > 0) {
-      const { data: userLikes } = await supabase
-        .from("likes")
-        .select("post_id")
-        .eq("user_id", user.id)
-        .in("post_id", postIds);
-
-      likedPostIds = new Set(userLikes?.map((l) => l.post_id) || []);
-    }
+    const likedPostIds = await fetchUserLikedPostIds(supabase, user.id, postIds);
 
     const formattedPosts = formatPosts(posts ?? [], likedPostIds);
     const isMyOwnProfile = user.id === profileUserId;

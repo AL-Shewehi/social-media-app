@@ -26,6 +26,7 @@ import {
 import { type PostCardProps, type PostCardPost } from "@/types/database.types";
 import { useState } from "react";
 import { useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import { feedKeys } from "@/lib/query-key-factory";
 import CommentsDialog from "./CommentsDialog";
 import { toggleLikeAction, deletePostAction } from "@/features/feed/actions";
 import { toast } from "sonner";
@@ -79,15 +80,15 @@ export default function PostCard({
   const likeMutation = useMutation({
     mutationFn: toggleLikeAction,
     onMutate: async (postId) => {
-      await queryClient.cancelQueries({ queryKey: ["feed"] });
+      await queryClient.cancelQueries({ queryKey: feedKeys.all });
       const previousQueries = queryClient
         .getQueryCache()
-        .findAll({ queryKey: ["feed"] })
+        .findAll({ queryKey: feedKeys.all })
         .map((q) => [q.queryKey, queryClient.getQueryData(q.queryKey)] as const);
 
       queryClient
         .getQueryCache()
-        .findAll({ queryKey: ["feed"] })
+        .findAll({ queryKey: feedKeys.all })
         .forEach((query) => {
           queryClient.setQueryData<InfiniteData<PostCardPost[]>>(
             query.queryKey,
@@ -137,7 +138,7 @@ export default function PostCard({
     onSuccess: (_data) => {
       queryClient
         .getQueryCache()
-        .findAll({ queryKey: ["feed"] })
+        .findAll({ queryKey: feedKeys.all })
         .forEach((query) => {
           queryClient.setQueryData<InfiniteData<PostCardPost[]>>(
             query.queryKey,
@@ -262,7 +263,7 @@ export default function PostCard({
                 )}
 
                 {sharedPost.image_url && (
-                  <div className="w-full border-t border-border/50 bg-secondary/10 flex justify-center">
+                  <Link href={`/post/${sharedPost.id}`} className="w-full border-t border-border/50 bg-secondary/10 flex justify-center">
                     <Image
                       src={sharedPost.image_url}
                       alt="Shared content"
@@ -272,7 +273,7 @@ export default function PostCard({
                       className="w-full h-auto max-h-75 object-cover"
                       priority={priority}
                     />
-                  </div>
+                  </Link>
                 )}
               </>
             ) : (
@@ -285,8 +286,8 @@ export default function PostCard({
       </CardContent>
 
       {post.image_url && (
-        <div
-          onClick={() => setIsCommentsOpen(true)}
+        <Link
+          href={`/post/${post.id}`}
           className="w-full cursor-pointer border-t border-b border-border/50 bg-secondary/20 flex items-center justify-center overflow-hidden"
         >
           <Image
@@ -298,7 +299,7 @@ export default function PostCard({
             className="w-full h-auto max-h-125 object-cover transition hover:brightness-95 duration-200"
             priority={priority}
           />
-        </div>
+        </Link>
       )}
 
       {(displayLikesCount > 0 || (post.comments?.length || 0) > 0) && (

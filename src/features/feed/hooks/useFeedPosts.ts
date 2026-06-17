@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { fetchMorePostsAction, fetchProfilePostsAction } from "@/features/feed/actions";
 import { formatPosts, RawPostData } from "@/lib/formatPosts";
 import { useInfiniteQuery, useQueryClient, InfiniteData } from "@tanstack/react-query";
+import { POST_SELECT } from "@/lib/queries/posts";
 import type { PostCardPost } from "@/types/database.types";
 
 interface UseFeedPostsProps {
@@ -94,21 +95,7 @@ export function useFeedPosts({ initialPosts, allowedUserIds, profileUserId }: Us
               try {
                 const { data: fullPostData, error } = await supabase
                   .from("posts")
-                  .select(
-                    `
-                    id, content, created_at, user_id, image_url, shared_post_id,
-                    profiles!posts_user_id_fkey (id, full_name, avatar_url),
-                    comments (
-                      id, content, created_at, user_id, 
-                      profiles (id, full_name, avatar_url)
-                    ),
-                    likes (count),
-                    shared_post:shared_post_id (
-                      id, content, image_url,
-                      profiles:profiles!posts_user_id_fkey (id, full_name, avatar_url)
-                    )
-                  `
-                  )
+                  .select(POST_SELECT)
                   .eq("id", payload.new.id)
                   .single();
 

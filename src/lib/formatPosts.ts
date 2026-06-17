@@ -1,5 +1,5 @@
 import { normalizeProfile } from "./normalize";
-import { PostCardPost, Profile } from "@/types/database.types";
+import { PostCardPost } from "@/types/database.types";
 
 export type RawProfileData = {
   id: string;
@@ -48,21 +48,21 @@ export function formatPosts(posts: RawPostData[], likedPostIds: Set<string>): Po
       image_url: post.image_url,
       shared_post_id: post.shared_post_id,
       
-      profiles: normalizeProfile(post.profiles) as Profile | null,
+      profiles: normalizeProfile(post.profiles),
       
       comments: post.comments?.map((c) => ({
         id: c.id,
         content: c.content,
         created_at: c.created_at,
         user_id: c.user_id,
-        profiles: normalizeProfile(c.profiles) as Profile | null,
+        profiles: normalizeProfile(c.profiles),
       })) ?? [],
       
       shared_post: rawShared ? {
           id: rawShared.id,
           content: rawShared.content,
           image_url: rawShared.image_url,
-          profiles: normalizeProfile(rawShared.profiles) as Profile | null,
+          profiles: normalizeProfile(rawShared.profiles),
       } : null,
       
       likesCount: post.likes?.[0]?.count ?? 0,
