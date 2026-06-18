@@ -1,6 +1,6 @@
 "use client";
-
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import dynamic from "next/dynamic";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -25,18 +25,30 @@ import {
 } from "lucide-react";
 import { type PostCardProps, type PostCardPost } from "@/types/database.types";
 import { useState } from "react";
-import { useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueryClient,
+  type InfiniteData,
+} from "@tanstack/react-query";
 import { feedKeys } from "@/lib/query-key-factory";
-import CommentsDialog from "./CommentsDialog";
 import { toggleLikeAction, deletePostAction } from "@/features/feed/actions";
 import { toast } from "sonner";
-import { DeletePostDialog } from "./DeletePostDialog";
 import Link from "next/link";
-import LikesDialog from "./LikesDialog";
 import { formatRelativeTime } from "@/lib/formatDate";
 import { motion, AnimatePresence } from "framer-motion";
 import CreatePostDialog from "./CreatePostDialog";
 import Image from "next/image";
+const CommentsDialog = dynamic(() => import("./CommentsDialog"), {
+  ssr: false,
+});
+
+const LikesDialog = dynamic(() => import("./LikesDialog"), {
+  ssr: false,
+});
+
+const DeletePostDialog = dynamic(() => import("./DeletePostDialog"), {
+  ssr: false,
+});
 
 export default function PostCard({
   post,
@@ -84,7 +96,9 @@ export default function PostCard({
       const previousQueries = queryClient
         .getQueryCache()
         .findAll({ queryKey: feedKeys.all })
-        .map((q) => [q.queryKey, queryClient.getQueryData(q.queryKey)] as const);
+        .map(
+          (q) => [q.queryKey, queryClient.getQueryData(q.queryKey)] as const,
+        );
 
       queryClient
         .getQueryCache()
@@ -105,10 +119,10 @@ export default function PostCard({
                       isLikedByMe: newIsLiked,
                       likesCount: (p.likesCount ?? 0) + (newIsLiked ? 1 : -1),
                     };
-                  })
+                  }),
                 ),
               };
-            }
+            },
           );
         });
 
@@ -147,19 +161,17 @@ export default function PostCard({
               return {
                 ...old,
                 pages: old.pages.map((page) =>
-                  page.filter((p) => p.id !== post.id)
+                  page.filter((p) => p.id !== post.id),
                 ),
               };
-            }
+            },
           );
         });
       toast.success("تم حذف المنشور بنجاح");
       setIsDeleteOpen(false);
     },
     onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "فشل حذف المنشور"
-      );
+      toast.error(error instanceof Error ? error.message : "فشل حذف المنشور");
     },
   });
 
@@ -171,11 +183,20 @@ export default function PostCard({
             href={profileHref}
             onClick={(e) => profileHref === "#" && e.preventDefault()}
           >
-            <Avatar className="h-10 w-10 border">
-              <AvatarImage src={avatar_url} alt={authorName} />
-              <AvatarFallback className="bg-primary text-white font-bold">
-                {fallbackLetter}
-              </AvatarFallback>
+            <Avatar className="h-12 w-12 border border-border/50 shadow-sm relative overflow-hidden">
+              {avatar_url ? (
+                <Image
+                  src={avatar_url}
+                  alt={authorName || "مستخدم "}
+                  fill
+                  sizes="48px"
+                  className="object-cover rounded-full"
+                />
+              ) : (
+                <AvatarFallback className="bg-primary text-white font-bold">
+                  {fallbackLetter}
+                </AvatarFallback>
+              )}
             </Avatar>
           </Link>
           <div>
@@ -198,6 +219,7 @@ export default function PostCard({
             <Button
               variant="ghost"
               size="icon"
+              aria-label="المزيد"
               className="rounded-full h-8 w-8 text-muted-foreground cursor-pointer"
             >
               <MoreHorizontal className="h-5 w-5" />
@@ -263,16 +285,21 @@ export default function PostCard({
                 )}
 
                 {sharedPost.image_url && (
-                  <Link href={`/post/${sharedPost.id}`} className="w-full border-t border-border/50 bg-secondary/10 flex justify-center">
-                    <Image
-                      src={sharedPost.image_url}
-                      alt="Shared content"
-                      width={800}
-                      height={450}
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                      className="w-full h-auto max-h-75 object-cover"
-                      priority={priority}
-                    />
+                  <Link
+                    href={`/post/${sharedPost.id}`}
+                    aria-label={`الانتقال إلى منشور ${sharedProfile?.full_name}`}
+                    className="w-full border-t border-border/50 bg-secondary/10 block"
+                  >
+                    <div className="relative w-full aspect-video max-h-75 overflow-hidden">
+                      <Image
+                        src={sharedPost.image_url}
+                        alt="Shared content"
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                        className="object-cover"
+                        priority={priority}
+                      />
+                    </div>
                   </Link>
                 )}
               </>
@@ -288,17 +315,19 @@ export default function PostCard({
       {post.image_url && (
         <Link
           href={`/post/${post.id}`}
-          className="w-full cursor-pointer border-t border-b border-border/50 bg-secondary/20 flex items-center justify-center overflow-hidden"
+          aria-label={`الانتقال إلى منشور ${authorName}`}
+          className="w-full cursor-pointer border-t border-b border-border/50 bg-secondary/20 block overflow-hidden"
         >
-          <Image
-            src={post.image_url}
-            alt="Post media"
-            width={800}
-            height={600}
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 50vw"
-            className="w-full h-auto max-h-125 object-cover transition hover:brightness-95 duration-200"
-            priority={priority}
-          />
+          <div className="relative w-full aspect-video max-h-125 overflow-hidden">
+            <Image
+              src={post.image_url}
+              alt="Post media"
+              fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 50vw"
+              className="object-cover transition hover:brightness-95 duration-200"
+              priority={priority}
+            />
+          </div>
         </Link>
       )}
 
@@ -342,7 +371,7 @@ export default function PostCard({
           disabled={likeMutation.isPending}
           className={`flex-1 gap-2 h-9 rounded-lg hover:bg-secondary transition text-sm font-medium ${
             displayIsLikedByMe
-              ? "text-primary hover:text-primary bg-primary/5 hover:bg-primary/10"
+              ? "text-primary hover:text-primary dark:bg-primary/10 bg-primary/5 hover:bg-primary/10"
               : "text-muted-foreground"
           }`}
         >

@@ -38,6 +38,7 @@ export default function MessageInput({ conversationId }: { conversationId: strin
       <Button
         type="submit"
         disabled={!content.trim() || sendMessage.isPending}
+        aria-label="ارسال رسالة"
         className="rounded-full w-11 h-11 p-0 flex items-center justify-center shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground transition-all"
       >
         {sendMessage.isPending ? (

@@ -137,7 +137,7 @@ export default function Navbar({
             />
           </div>
 
-          {/* قائمة نتائج البحث الطائرة */}
+          {/* قائمة نتائج البحث  */}
           {isDropdownOpen && (
             <div className="absolute top-12 right-0 w-full bg-card border rounded-xl shadow-xl overflow-hidden z-50 p-1 animate-in fade-in slide-in-from-top-1 duration-200">
               {searchResults.length > 0 ? (
@@ -152,7 +152,10 @@ export default function Navbar({
                       className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition cursor-pointer text-right w-full"
                     >
                       <Avatar className="h-8 w-8 border">
-                        <AvatarImage src={profile.avatar_url ?? undefined} />
+                        <AvatarImage
+                          src={profile.avatar_url ?? undefined}
+                          alt={profile.full_name || "صورة المستخدم"}
+                        />
                         <AvatarFallback className="bg-primary text-white text-xs font-bold">
                           {profile.full_name?.charAt(0).toUpperCase()}
                         </AvatarFallback>
@@ -172,13 +175,16 @@ export default function Navbar({
           )}
         </div>
 
-        {/* أزرار الموبايل العلوية */}
         <div className="flex items-center gap-2 lg:hidden">
           <Button
             variant="secondary"
             size="icon"
-            className="rounded-full h-10 w-10 bg-secondary"
-            onClick={() => { setShowMobileSearch(!showMobileSearch); setTimeout(() => mobileSearchRef.current?.focus(), 100); }}
+            className="rounded-full h-12 w-12 bg-secondary"
+            aria-label="فتح البحث"
+            onClick={() => {
+              setShowMobileSearch(!showMobileSearch);
+              setTimeout(() => mobileSearchRef.current?.focus(), 100);
+            }}
           >
             <Search className="h-5 w-5" />
           </Button>
@@ -186,7 +192,8 @@ export default function Navbar({
             onClick={toggleMobileSidebar}
             variant="secondary"
             size="icon"
-            className="rounded-full h-10 w-10 bg-secondary"
+            aria-label="القائمة الجانبية"
+            className="rounded-full h-12 w-12 bg-secondary"
           >
             <Menu className="h-5 w-5" />
           </Button>
@@ -207,11 +214,15 @@ export default function Navbar({
               type="text"
               placeholder="البحث في Socially"
               value={searchQuery}
-              onFocus={() => searchQuery.trim().length >= 2 && setIsDropdownOpen(true)}
+              onFocus={() =>
+                searchQuery.trim().length >= 2 && setIsDropdownOpen(true)
+              }
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full h-10 pr-9 bg-secondary rounded-full border-none focus-visible:ring-1 focus-visible:ring-ring text-sm"
               dir="auto"
-              onKeyDown={(e) => { if (e.key === "Escape") setShowMobileSearch(false); }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") setShowMobileSearch(false);
+              }}
             />
             {!searchQuery && (
               <button
@@ -224,7 +235,7 @@ export default function Navbar({
           </div>
 
           {isDropdownOpen && (
-            <div className="absolute  right-4 left-4 bg-card border rounded-xl shadow-xl overflow-hidden z-50 p-1 animate-in fade-in slide-in-from-top-1 duration-200">
+            <div className="absolute right-4 left-4 bg-card border rounded-xl shadow-xl overflow-hidden z-50 p-1 animate-in fade-in slide-in-from-top-1 duration-200">
               {searchResults.length > 0 ? (
                 <div className="space-y-0.5">
                   <p className="text-[11px] font-medium text-muted-foreground px-3 py-1.5 border-b border-border/40 text-right">
@@ -233,11 +244,17 @@ export default function Navbar({
                   {searchResults.map((profile) => (
                     <div
                       key={profile.id}
-                      onClick={() => { handleUserClick(profile.id); setShowMobileSearch(false); }}
+                      onClick={() => {
+                        handleUserClick(profile.id);
+                        setShowMobileSearch(false);
+                      }}
                       className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition cursor-pointer text-right w-full"
                     >
                       <Avatar className="h-8 w-8 border">
-                        <AvatarImage src={profile.avatar_url ?? undefined} />
+                        <AvatarImage
+                          src={profile.avatar_url ?? undefined}
+                          alt={profile.full_name || "صورة المستخدم"}
+                        />
                         <AvatarFallback className="bg-primary text-white text-xs font-bold">
                           {profile.full_name?.charAt(0).toUpperCase()}
                         </AvatarFallback>
@@ -258,15 +275,32 @@ export default function Navbar({
         </div>
       )}
 
-      <div className="flex items-center justify-around lg:justify-center w-full lg:w-auto flex-1 max-w-2xl h-12 lg:h-14 lg:gap-1">
+      {/* ─── أزرار التصفح الرئيسية (الـ Tabs) ─── */}
+      <div className="flex items-center justify-around lg:justify-center w-full lg:w-auto flex-1 max-w-2xl h-14 lg:gap-1">
         {[
-          { icon: Home, href: "/", label: "Home" },
-          { icon: Users, href: "/groups", label: "Groups" },
-          { icon: Tv, href: "/watch", label: "Watch" },
-        ].map((item, index) => (
+          {
+            icon: Home,
+            href: "/",
+            label: "Home",
+            ariaLabel: "الصفحة الرئيسية",
+          },
+          {
+            icon: Users,
+            href: "/groups",
+            label: "Groups",
+            ariaLabel: "المجموعات",
+          },
+          {
+            icon: Tv,
+            href: "/watch",
+            label: "Watch",
+            ariaLabel: "قاطع الفيديو والـ Watch",
+          },
+        ].map((item, index) =>
           item.href === "/" ? (
             <button
               key={index}
+              aria-label={item.ariaLabel}
               onClick={() => {
                 if (pathname === "/") {
                   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -288,6 +322,7 @@ export default function Navbar({
             <Link
               key={index}
               href={item.href}
+              aria-label={item.ariaLabel}
               className={cn(
                 "flex items-center justify-center flex-1 lg:w-28 h-full border-b-2 lg:border-b-4 border-transparent transition relative",
                 "text-muted-foreground hover:bg-secondary",
@@ -298,11 +333,13 @@ export default function Navbar({
             >
               <item.icon className="h-6 w-6 lg:h-7 lg:w-7" />
             </Link>
-          )
-        ))}
+          ),
+        )}
 
+        {/* روابط الموبايل الإضافية (الشات والإشعارات) */}
         <Link
           href="/chat"
+          aria-label="المحادثات والرسائل"
           className={cn(
             "flex items-center justify-center flex-1 lg:w-28 h-full border-b-2 lg:border-b-4 border-transparent transition relative lg:hidden",
             "text-muted-foreground hover:bg-secondary",
@@ -312,12 +349,12 @@ export default function Navbar({
           )}
         >
           <MessageCircle className="h-6 w-6 text-muted-foreground" />
-
-          <UnreadBadge />
+          <UnreadBadge currentUserId={user?.id ?? ""} />
         </Link>
 
         <Link
           href="/notifications"
+          aria-label="الإشعارات والتنبيهات"
           className={cn(
             "flex items-center justify-center flex-1 lg:w-28 h-full border-b-2 lg:border-b-4 border-transparent transition relative",
             "text-muted-foreground hover:bg-secondary",
@@ -331,18 +368,20 @@ export default function Navbar({
         </Link>
       </div>
 
-      <div className="hidden lg:flex items-center gap-2 flex-1 justify-end px-4 h-14">
+      <div className="hidden lg:flex items-center gap-3 flex-1 justify-end px-4 h-14">
         <Button
           variant="secondary"
           size="icon"
-          className="rounded-full h-10 w-10 bg-secondary hover:bg-secondary/80 transition relative"
+          aria-label="صندوق الرسائل والمحادثات"
+          className="rounded-full h-12 w-12 bg-secondary hover:bg-secondary/80 transition relative" 
         >
           <Link
             href="/chat"
+            aria-label="الانتقال للمحادثات"
             className="absolute inset-0 flex items-center justify-center"
           >
             <MessageCircle className="h-5 w-5" />
-            <UnreadBadge />
+            <UnreadBadge currentUserId={user?.id ?? ""} />
           </Link>
         </Button>
 
@@ -356,10 +395,11 @@ export default function Navbar({
 
         <Link
           href={`/profile/${user?.id}`}
-          className="mr-1 hover:brightness-95 transition"
+          aria-label="عرض ملفك الشخصي"
+          className="mr-1 hover:brightness-95 transition block"
         >
           <Avatar className="h-10 w-10 border border-border">
-            <AvatarImage src={avatar || undefined} alt={Author} />
+            <AvatarImage src={avatar || undefined} alt={Author} />{" "}
             <AvatarFallback className="bg-primary text-white font-bold">
               {fallbackLetter}
             </AvatarFallback>

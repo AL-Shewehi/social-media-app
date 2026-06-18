@@ -10,7 +10,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Image, Smile, Video, X } from "lucide-react";
+import { Image, Loader2, Smile, Video, X } from "lucide-react";
 import { createPostAction } from "@/features/feed/actions";
 import { toast } from "sonner";
 import type { Profile } from "@/types/database.types";
@@ -93,9 +93,7 @@ export default function CreatePostDialog({
     }
 
     if (!ALLOWED_TYPES.includes(file.type)) {
-      toast.error(
-        "صيغة الصورة يجب ان تكون jpeg, png, webp, gif",
-      );
+      toast.error("صيغة الصورة يجب ان تكون jpeg, png, webp, gif");
       return null;
     }
 
@@ -107,8 +105,8 @@ export default function CreatePostDialog({
     const { data, error } = await supabase.storage
       .from("post_images")
       .upload(fileName, file, {
-        cacheControl: "3600",
-        upsert: false,
+        cacheControl: "31536000",
+        upsert: true,
       });
 
     if (error) {
@@ -202,25 +200,25 @@ export default function CreatePostDialog({
           />
 
           {imagePreview && (
-            <div className="relative rounded-lg overflow-hidden border border-border bg-secondary/30 max-h-[250px]">
+            <div className="relative rounded-lg overflow-hidden border border-border bg-secondary/30 w-full aspect-video max-h-[250px]">
               <img
                 src={imagePreview}
                 alt="Preview"
-                className="w-full h-full object-cover max-h-[250px]"
+                className="w-full h-full object-cover"
               />
               <Button
                 type="button"
                 variant="destructive"
                 size="icon"
                 onClick={removeSelectedImage}
-                className="absolute top-2 right-2 h-7 w-7 rounded-full shadow-md"
+                disabled={isPending}
+                className="absolute top-2 right-2 h-7 w-7 rounded-full shadow-md disabled:opacity-50"
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
           )}
 
-          {/*  أضفنا ID للـ Input عشان نقدر نفتحه من بره الكومبوننت لو حبينا */}
           <input
             id="post-image-input"
             type="file"
@@ -228,6 +226,7 @@ export default function CreatePostDialog({
             onChange={handleImageChange}
             accept="image/*"
             className="hidden"
+            disabled={isPending}
           />
 
           <div className="flex items-center justify-between border border-border p-2 rounded-lg bg-background/50">
@@ -239,8 +238,9 @@ export default function CreatePostDialog({
                 type="button"
                 variant="ghost"
                 size="icon"
+                disabled={isPending}
                 onClick={() => fileInputRef.current?.click()}
-                className="text-emerald-500 rounded-full h-9 w-9 hover:bg-secondary"
+                className="text-emerald-500 rounded-full h-9 w-9 hover:bg-secondary disabled:opacity-50"
               >
                 <Image className="h-5 w-5" />
               </Button>
@@ -248,7 +248,8 @@ export default function CreatePostDialog({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="text-red-500 rounded-full h-9 w-9 hover:bg-secondary"
+                disabled={isPending}
+                className="text-red-500 rounded-full h-9 w-9 hover:bg-secondary disabled:opacity-50"
               >
                 <Video className="h-5 w-5" />
               </Button>
@@ -256,7 +257,8 @@ export default function CreatePostDialog({
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="text-amber-500 rounded-full h-9 w-9 hover:bg-secondary"
+                disabled={isPending}
+                className="text-amber-500 rounded-full h-9 w-9 hover:bg-secondary disabled:opacity-50"
               >
                 <Smile className="h-5 w-5" />
               </Button>
@@ -268,8 +270,9 @@ export default function CreatePostDialog({
             disabled={
               (!postText.trim() && !selectedFile && !sharedPostId) || isPending
             }
-            className="w-full h-10 font-semibold rounded-lg"
+            className="w-full h-10 font-semibold rounded-lg flex items-center justify-center gap-2"
           >
+            {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
             {isPending ? "جاري النشر..." : "نشر"}
           </Button>
         </form>

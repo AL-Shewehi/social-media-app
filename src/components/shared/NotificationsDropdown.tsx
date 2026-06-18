@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Bell, Heart, MessageCircle, UserPlus, Share2 } from "lucide-react";
+import { Bell } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -98,6 +98,7 @@ export default function NotificationsDropdown({
         <Button
           variant="secondary"
           size="icon"
+          aria-label="الإشعارات"
           className="rounded-full h-10 w-10 bg-secondary hover:bg-secondary/80 transition relative"
         >
           <Bell className="w-5 h-5" />

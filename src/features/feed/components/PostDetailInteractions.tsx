@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toggleLikeAction, createCommentAction, deletePostAction } from "../actions";
@@ -13,9 +14,12 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { formatRelativeTime } from "@/lib/formatDate";
 import { toast } from "sonner";
-import LikesDialog from "./LikesDialog";
 import type { PostCardPost, Profile } from "@/types/database.types";
 import type { InfiniteData } from "@tanstack/react-query";
+
+const LikesDialog = dynamic(() => import("./LikesDialog"), {
+  ssr: false,
+});
 
 interface PostDetailInteractionsProps {
   post: PostCardPost;

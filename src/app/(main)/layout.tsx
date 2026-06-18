@@ -25,9 +25,12 @@ export default async function MainLayout({
         onFetchNotifications={fetchNotificationsAction}
         onMarkNotificationsAsRead={markNotificationsAsReadAction}
       />
-      <div className="flex justify-between items-start w-full max-w-[1800px] mx-auto gap-4 lg:px-4 pt-4">
+      <div className="flex justify-between items-start w-full max-w-450 mx-auto gap-4 lg:px-4 pt-4">
         <Sidebar user={profile} />
-        <div className="flex-1">{children}</div>
+        
+        <main className="flex-1 min-w-0">
+          {children}
+        </main>
       </div>
     </div>
   );

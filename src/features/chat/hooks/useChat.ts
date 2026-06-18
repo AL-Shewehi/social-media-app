@@ -15,6 +15,7 @@ export function useConversations() {
       if (!result.success) throw new Error(result.error);
       return result.data as ConversationListItem[];
     },
+    staleTime: 5 * 60 * 1000, // 5 دقائق
   });
 }
 
@@ -164,7 +165,7 @@ export function useChatMessages(conversationId: string, currentUserId: string) {
       isMounted = false;
       supabase.removeChannel(channel);
     };
-  }, [queryClient, conversationId]);
+  }, [queryClient, conversationId, currentUserId]);
 
   const messages = data?.pages.flat() || [];
 

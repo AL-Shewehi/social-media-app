@@ -1,13 +1,14 @@
 "use client";
 
 import { useConversations } from "../hooks/useChat";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { formatRelativeTime } from "@/lib/formatDate";
 import OnlineDot from "@/features/online/components/OnlineDot";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MessageSquare, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 export default function ConversationList() {
   const { data: conversations, isLoading, error } = useConversations();
@@ -37,7 +38,8 @@ export default function ConversationList() {
           <MessageSquare className="h-6 w-6 text-muted-foreground" />
         </div>
         <p className="text-muted-foreground text-sm">
-          لا توجد محادثات حتى الآن.<br />
+          لا توجد محادثات حتى الآن.
+          <br />
           ابدأ بالتواصل مع أصدقائك من ملفاتهم الشخصية!
         </p>
       </div>
@@ -48,24 +50,37 @@ export default function ConversationList() {
     <div className="flex flex-col overflow-y-auto h-full bg-background">
       {conversations.map((convo) => {
         const participant = convo.participant;
-        const fallbackLetter = participant.full_name?.charAt(0).toUpperCase() || "?";
+        const fallbackLetter =
+          participant.full_name?.charAt(0).toUpperCase() || "?";
         const isActive = pathname.includes(`/chat/${convo.id}`);
 
         return (
           <Link
             key={convo.id}
             href={`/chat/${convo.id}`}
+            prefetch={false} // منع الـ prefetch لتقليل استهلاك البيانات على الموبايل
             className={cn(
               "flex items-center gap-3 p-3 transition-colors border-b border-border/40 hover:bg-secondary/50",
-              isActive ? "bg-secondary/80 border-l-4 border-l-primary" : "border-l-4 border-l-transparent"
+              isActive
+                ? "bg-secondary/80 border-l-4 border-l-primary"
+                : "border-l-4 border-l-transparent",
             )}
           >
             <div className="relative shrink-0">
-              <Avatar className="h-12 w-12 border border-border/50 shadow-sm">
-                <AvatarImage src={participant.avatar_url || ""} alt={participant.full_name || "User"} />
-                <AvatarFallback className="bg-primary/10 text-primary font-bold">
-                  {fallbackLetter}
-                </AvatarFallback>
+              <Avatar className="h-12 w-12 border border-border/50 shadow-sm relative overflow-hidden">
+                {participant.avatar_url ? (
+                  <Image
+                    src={participant.avatar_url}
+                    alt={participant.full_name || "User"}
+                    fill
+                    sizes="48px"
+                    className="object-cover rounded-full"
+                  />
+                ) : (
+                  <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                    {fallbackLetter}
+                  </AvatarFallback>
+                )}
               </Avatar>
               <OnlineDot userId={participant.id} />
             </div>
@@ -87,14 +102,15 @@ export default function ConversationList() {
                   {convo.lastMessage ? (
                     <>
                       {/* لو هو اللي باعت الرسالة نحط "أنت:" قبلها للتمييز السريع */}
-                      {convo.lastMessage.sender_id !== participant.id && "أنت: "}
+                      {convo.lastMessage.sender_id !== participant.id &&
+                        "أنت: "}
                       {convo.lastMessage.content}
                     </>
                   ) : (
                     <span className="italic">محادثة جديدة</span>
                   )}
                 </p>
-                
+
                 {/* عدد الرسائل الغير مقروءة */}
                 {(convo.unreadCount || 0) > 0 && (
                   <span className="bg-destructive text-destructive-foreground text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center">

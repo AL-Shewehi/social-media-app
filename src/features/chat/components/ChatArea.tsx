@@ -36,12 +36,15 @@ export default function ChatArea({
   //  جعل الرسائل مقروءة عند فتح الشات
   useEffect(() => {
     if (conversationId) {
-      queryClient.setQueryData<ConversationListItem[]>(["conversations"], (old) => {
-        if (!old) return old;
-        return old.map((convo) =>
-          convo.id === conversationId ? { ...convo, unreadCount: 0 } : convo,
-        );
-      });
+      queryClient.setQueryData<ConversationListItem[]>(
+        ["conversations"],
+        (old) => {
+          if (!old) return old;
+          return old.map((convo) =>
+            convo.id === conversationId ? { ...convo, unreadCount: 0 } : convo,
+          );
+        },
+      );
 
       // إرسال طلب التحديث للسيرفر
       markMessagesAsReadAction(conversationId).then(() => {
@@ -75,7 +78,10 @@ export default function ChatArea({
         </Link>
         {participant ? (
           <>
-            <Link href={`/profile/${participant.id}`} className="flex items-center gap-3">
+            <Link
+              href={`/profile/${participant.id}`}
+              className="flex items-center gap-3"
+            >
               <div className="relative shrink-0">
                 <Avatar className="h-10 w-10 border border-border/50 shadow-sm">
                   <AvatarImage src={participant.avatar_url ?? undefined} />
@@ -143,9 +149,9 @@ export default function ChatArea({
                       </span>
                       {isMe &&
                         (msg.is_read ? (
-                          <CheckCheck className="h-3.5 w-3.5 " />
+                          <CheckCheck className="h-3.5 w-3.5 text-primary" />
                         ) : (
-                          <Check className="h-3.5 w-3.5" />
+                          <Check className="h-3.5 w-3.5 text-muted-foreground" />
                         ))}
                     </div>
                   </div>

@@ -17,7 +17,6 @@ export default async function FeedList({ currentUserProfile }: FeedListProps) {
     error: authError,
   } = await supabase.auth.getUser();
 
-  //  لو مفيش يوزر أو حصل خطأ، نوقف هنا ونعرض رسالة
   if (authError || !user) {
     console.error("🚨 خطأ في المصادقة داخل FeedList:", authError?.message);
     return (
@@ -45,13 +44,19 @@ export default async function FeedList({ currentUserProfile }: FeedListProps) {
 
   const allowedUserIds = [user.id, ...friendIds];
 
-  const { data: posts, error } = await supabase
-    .from("posts")
-    .select(POST_SELECT)
-    .in("user_id", allowedUserIds)
-    .order("created_at", { ascending: false })
-    .order("created_at", { referencedTable: "comments", ascending: true })
-    .limit(15);
+  const [postsResult, likedPostIds] = await Promise.all([
+    supabase
+      .from("posts")
+      .select(POST_SELECT)
+      .in("user_id", allowedUserIds)
+      .order("created_at", { ascending: false })
+      .order("created_at", { referencedTable: "comments", ascending: true })
+      .limit(15),
+
+    fetchUserLikedPostIds(supabase, user.id, []),
+  ]);
+
+  const { data: posts, error } = postsResult;
 
   if (error) {
     console.error("🚨 خطأ أثناء جلب المنشورات:", error.message);
@@ -62,10 +67,11 @@ export default async function FeedList({ currentUserProfile }: FeedListProps) {
     );
   }
 
-  const postIds = posts?.map((p) => p.id) || [];
-  const likedPostIds = await fetchUserLikedPostIds(supabase, user.id, postIds);
+  const formattedPosts = formatPosts(
+    (posts as unknown as RawPostData[]) || [],
+    likedPostIds,
+  );
 
-const formattedPosts = formatPosts((posts as unknown as RawPostData[]) || [], likedPostIds);
   return (
     <FeedErrorBoundary>
       <RealtimeFeedList

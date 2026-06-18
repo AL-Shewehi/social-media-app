@@ -14,17 +14,13 @@ function validateUUID(id: string, errorMessage: string) {
 
 export async function sendFriendRequestAction(targetUserId: string) {
     return withErrorHandling(async () => {
-        //  التحقق من صحة معرف المستخدم المستهدف
         validateUUID(targetUserId, "معرف المستخدم المستهدف غير صالح.");
-
         const { supabase, user } = await requireUser();
 
-        // منع المستخدم من إرسال طلب صداقة لنفسه
         if (user.id === targetUserId) {
             throw new Error("لا يمكنك إرسال طلب صداقة إلى نفسك.");
         }
 
-        //  إرسال طلب الصداقة في جدول الصداقات
         const { data: friendship, error } = await supabase.from("friendships").insert([{
             sender_id: user.id,
             receiver_id: targetUserId,
@@ -33,17 +29,13 @@ export async function sendFriendRequestAction(targetUserId: string) {
 
         if (error) throw error;
 
-        //  إرسال إشعار للشخص الثاني
-        const { error: notifError } = await supabase.from("notifications").insert([{
+        await supabase.from("notifications").insert([{
             receiver_id: targetUserId,
             actor_id: user.id,
             type: 'friend_request'
         }]);
 
-        if (notifError) {
-            console.error("🚨 خطأ في تسجيل إشعار طلب الصداقة:", notifError);
-        }
-
+        revalidatePath("/friends");
         revalidatePath(`/profile/${targetUserId}`);
         return friendship;
     }, "فشل إرسال طلب الصداقة");
@@ -51,13 +43,10 @@ export async function sendFriendRequestAction(targetUserId: string) {
 
 export async function acceptFriendRequestAction(friendshipId: string, senderId: string) {
     return withErrorHandling(async () => {
-        //  التحقق من صحة المعرفات
         validateUUID(friendshipId, "معرف الصداقة غير صالح.");
         validateUUID(senderId, "معرف المرسل غير صالح.");
-
         const { supabase, user } = await requireUser();
 
-        // تحديث حالة الصداقة إلى "مقبول"
         const { error } = await supabase.from("friendships").update({
             status: "accepted",
             updated_at: new Date().toISOString(),
@@ -67,31 +56,24 @@ export async function acceptFriendRequestAction(friendshipId: string, senderId: 
 
         if (error) throw error;
 
-        //  إرسال إشعار قبول الصداقة
-        const { error: notifError } = await supabase.from("notifications").insert([{
+        await supabase.from("notifications").insert([{
             receiver_id: senderId,
             actor_id: user.id,
             type: 'friend_accept'
         }]);
 
-        if (notifError) {
-            console.error("🚨 خطأ في تسجيل إشعار قبول الصداقة:", notifError);
-        }
-
+        revalidatePath("/friends");
         revalidatePath(`/profile/${senderId}`);
         return null;
-    }, "حدث خطأ أثناء قبول طلب الصداقة. حاول مرة أخرى.");
+    }, "حدث خطأ أثناء قبول طلب الصداقة.");
 }
 
 export async function cancelOrRemoveFriendshipAction(friendshipId: string, targetUserId: string) {
     return withErrorHandling(async () => {
-        // التحقق من صحة المعرفات
         validateUUID(friendshipId, "معرف الصداقة غير صالح.");
         validateUUID(targetUserId, "معرف المستخدم المستهدف غير صالح.");
-
         const { supabase, user } = await requireUser();
 
-        // مسح علاقة الصداقة
         const { error } = await supabase.from("friendships")
             .delete()
             .eq("id", friendshipId)
@@ -99,17 +81,13 @@ export async function cancelOrRemoveFriendshipAction(friendshipId: string, targe
 
         if (error) throw error;
 
-        // مسح الإشعار المرتبط بطلب الصداقة
-        const { error: deleteNotifError } = await supabase.from("notifications")
+        await supabase.from("notifications")
             .delete()
             .eq("receiver_id", targetUserId)
             .eq("actor_id", user.id)
             .eq("type", 'friend_request');
 
-        if (deleteNotifError) {
-            console.error("🚨 خطأ في حذف إشعار طلب الصداقة:", deleteNotifError);
-        }
-
+        revalidatePath("/friends");
         revalidatePath(`/profile/${targetUserId}`);
         return null;
     }, "فشل إلغاء أو حذف الصداقة");

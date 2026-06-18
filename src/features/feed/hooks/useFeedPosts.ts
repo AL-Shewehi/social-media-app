@@ -50,6 +50,9 @@ export function useFeedPosts({ initialPosts, allowedUserIds, profileUserId }: Us
         return lastPage[lastPage.length - 1].created_at;
       },
       initialData: { pages: [initialPosts], pageParams: [undefined] },
+      
+      staleTime: 1000 * 60 * 3,  // الحفاظ على الكاش لمدة 3 دقايق
+      gcTime: 1000 * 60 * 10,   // حذف الكاش بعد 10 دقايق
     });
 
   const hasPagination = isMainFeed;
@@ -61,8 +64,9 @@ export function useFeedPosts({ initialPosts, allowedUserIds, profileUserId }: Us
     let isMounted = true;
     const supabase = createClient();
 
+    const uniqueChannelId = crypto.randomUUID();
     const channel = supabase
-      .channel("realtime-feed-channel")
+      .channel(`realtime-feed-${uniqueChannelId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "posts" },

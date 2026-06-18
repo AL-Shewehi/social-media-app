@@ -29,8 +29,8 @@ export default function ChatConversationShell({
           )}
         >
           <div className="px-4 border-b border-border bg-card shrink-0 h-14 sticky top-0 z-10 flex items-center gap-2">
-            <Link href="/chat">
-              <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Link href="/chat" aria-label="الانتقال للرسائل" >
+              <Button variant="ghost" size="icon" aria-label="الانتقال للرسائل" className="h-8 w-8">
                 <ArrowRight className="h-5 w-5" />
               </Button>
             </Link>

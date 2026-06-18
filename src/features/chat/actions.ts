@@ -106,6 +106,32 @@ export async function getConversationsListAction() {
     }, "Failed to fetch conversations list");
 }
 
+export async function getGlobalUnreadCountAction() {
+    return withErrorHandling(async () => {
+        const { supabase, user } = await requireUser();
+
+        const { data: conversations, error } = await supabase
+            .from("conversations")
+            .select(`
+                id,
+                messages (is_read, sender_id)
+            `)
+            .or(`user_one_id.eq.${user.id},user_two_id.eq.${user.id}`);
+
+        if (error) throw error;
+        if (!conversations) return 0;
+
+        const totalUnread = conversations.reduce((sum, conv) => {
+            const unreadInConv = (conv.messages ?? []).filter(
+                (msg: { is_read: boolean; sender_id: string }) => !msg.is_read && msg.sender_id !== user.id
+            ).length;
+            return sum + unreadInConv;
+        }, 0);
+
+        return totalUnread;
+    }, "فشل جلب عدد الرسائل غير المقروءة");
+}
+
 export async function getConversationParticipantAction(conversationId: string) {
     return withErrorHandling(async () => {
         const { supabase, user } = await requireUser();

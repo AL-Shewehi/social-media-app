@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { Settings, UserPlus, Users, ChevronLeft, Home } from "lucide-react";
+import { UserPlus, Users, ChevronLeft, Home } from "lucide-react";
 import Link from "next/link";
 import { normalizeProfile } from "@/lib/normalize";
 import PendingRequestsSection from "@/features/friends/components/PendingRequestsSection";
@@ -28,83 +28,70 @@ export default async function FriendsPage({
   const showSuggestions = currentTab === "home" || currentTab === "suggestions";
   const showAllFriends = currentTab === "home" || currentTab === "all";
 
-  type PendingRequestType = {
-    id: string;
-    sender_id: string;
-    receiver_id: string;
-    status: string;
-    sender: Profile | null;
-  };
+  // طلبات الصداقة المعلقة
+  const fetchRequests = showRequests
+    ? supabase
+        .from("friendships")
+        .select(
+          "id, sender_id, receiver_id, status, sender:profiles!friendships_sender_id_fkey(id, full_name, avatar_url)",
+        )
+        .eq("status", "pending")
+        .eq("receiver_id", user.id)
+    : Promise.resolve({ data: [] });
 
-  type FriendType = {
-    friendshipId: string;
-    rawFriendship: {
-      id: string;
-      sender_id: string;
-      receiver_id: string;
-      status: "accepted";
+  // الأصدقاء الحاليين
+  const fetchFriends = showAllFriends
+    ? supabase
+        .from("friendships")
+        .select(
+          "id, sender_id, receiver_id, status, sender:profiles!friendships_sender_id_fkey(id, full_name, avatar_url), receiver:profiles!friendships_receiver_id_fkey(id, full_name, avatar_url)",
+        )
+        .eq("status", "accepted")
+        .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+    : Promise.resolve({ data: [] });
+
+  // الاقتراحات
+  const suggestionsLimit = currentTab === "suggestions" ? 30 : 5;
+  const fetchSuggestions = showSuggestions
+    ? getSuggestedFriendsAction(suggestionsLimit)
+    : Promise.resolve({ success: true, data: [] });
+
+  // تنفيذ جميع الطلبات المتزامنة
+  const [requestsRes, friendsRes, suggestionsRes] = await Promise.all([
+    fetchRequests,
+    fetchFriends,
+    fetchSuggestions,
+  ]);
+
+  // معالجة البيانات بعد جلبها دفعة واحدة
+  const pendingRequests = (requestsRes.data?.map((req: any) => ({
+    ...req,
+    sender: normalizeProfile(req.sender),
+  })) ?? []) as any[];
+
+  const myFriends = (friendsRes.data?.map((f: any) => {
+    const senderProfile = normalizeProfile(f.sender);
+    const receiverProfile = normalizeProfile(f.receiver);
+    const friendProfile =
+      f.sender_id === user.id ? receiverProfile : senderProfile;
+
+    return {
+      friendshipId: f.id,
+      rawFriendship: {
+        id: f.id,
+        sender_id: f.sender_id,
+        receiver_id: f.receiver_id,
+        status: f.status as "accepted",
+      },
+      profile: friendProfile,
     };
-    profile: Profile | null;
-  };
+  }) ?? []) as any[];
 
-  let pendingRequests: PendingRequestType[] = [];
-  let myFriends: FriendType[] = [];
-  let suggestedFriends: Profile[] = [];
+  const suggestedFriends =
+    suggestionsRes.success && suggestionsRes.data
+      ? (suggestionsRes.data as Profile[])
+      : [];
 
-  if (showRequests) {
-    const { data: rawPendingRequests } = await supabase
-      .from("friendships")
-      .select(
-        "id, sender_id, receiver_id, status, sender:profiles!friendships_sender_id_fkey(id, full_name, avatar_url)",
-      )
-      .eq("status", "pending")
-      .eq("receiver_id", user.id);
-
-    pendingRequests = (rawPendingRequests?.map((req) => ({
-      ...req,
-      sender: normalizeProfile(req.sender),
-    })) ?? []) as PendingRequestType[];
-  }
-
-  if (showAllFriends) {
-    const { data: acceptedFriendships } = await supabase
-      .from("friendships")
-      .select(
-        "id, sender_id, receiver_id, status, sender:profiles!friendships_sender_id_fkey(id, full_name, avatar_url), receiver:profiles!friendships_receiver_id_fkey(id, full_name, avatar_url)",
-      )
-      .eq("status", "accepted")
-      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
-
-    myFriends = (acceptedFriendships?.map((f) => {
-      const senderProfile = normalizeProfile(f.sender);
-      const receiverProfile = normalizeProfile(f.receiver);
-      const friendProfile =
-        f.sender_id === user.id ? receiverProfile : senderProfile;
-
-      return {
-        friendshipId: f.id,
-        rawFriendship: {
-          id: f.id,
-          sender_id: f.sender_id,
-          receiver_id: f.receiver_id,
-          status: f.status as "accepted",
-        },
-        profile: friendProfile,
-      };
-    }) ?? []) as FriendType[];
-  }
-
-  if (showSuggestions) {
-    const suggestionsLimit = currentTab === "suggestions" ? 30 : 5;
-    const suggestionsResult = await getSuggestedFriendsAction(suggestionsLimit);
-    //  حماية إضافية: تأكيد أن البيانات راجعة كمصفوفة وليست undefined
-    suggestedFriends =
-      suggestionsResult.success && suggestionsResult.data
-        ? (suggestionsResult.data as Profile[])
-        : [];
-  }
-
-  // مصفوفة التابات لسهولة الرسم وتحديد الحالة النشطة
   const navTabs = [
     { id: "home", icon: Home, label: "الصفحة الرئيسية", href: "/friends" },
     {
@@ -143,11 +130,7 @@ export default async function FriendsPage({
               >
                 <div className="flex items-center gap-3">
                   <div
-                    className={`p-2 rounded-full transition ${
-                      isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary group-hover:bg-background text-foreground"
-                    }`}
+                    className={`p-2 rounded-full transition ${isActive ? "bg-primary text-primary-foreground" : "bg-secondary group-hover:bg-background text-foreground"}`}
                   >
                     <tab.icon className="h-5 w-5" />
                   </div>

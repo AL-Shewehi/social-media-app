@@ -16,7 +16,7 @@ interface DeletePostDialogProps {
     onConfirm: () => void;
 }
 
-export function DeletePostDialog({ open, onOpenChange, isDeleting, onConfirm }: DeletePostDialogProps) {
+export default function DeletePostDialog({ open, onOpenChange, isDeleting, onConfirm }: DeletePostDialogProps) {
     return (
         <AlertDialog open={open} onOpenChange={onOpenChange}>
             <AlertDialogContent>

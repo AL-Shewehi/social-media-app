@@ -85,7 +85,7 @@ export default function Sidebar({ user }: SidebarProps) {
                     className="flex items-center gap-3 px-2 py-1.5 w-full rounded-xl hover:bg-secondary/80 transition"
                 >
                     <Avatar className="h-9 w-9 border">
-                        <AvatarImage src={avatar || undefined} alt={fullName} />
+                        <AvatarImage src={avatar || undefined} alt={fullName || "الصورة الشخصية للمستخدم"} />
                         <AvatarFallback className="bg-primary text-white font-bold">{fallbackLetter}</AvatarFallback>
                     </Avatar>
                     <span className="font-semibold text-foreground text-[15px]">{fullName}</span>
