@@ -309,11 +309,8 @@ export default function Navbar({
               aria-label={item.ariaLabel}
               onClick={() => {
                 if (pathname === "/") {
-                  if (window.scrollY > 0) {
-                    window.scrollTo({ top: 0, behavior: "smooth" });
-                  } else {
-                    window.dispatchEvent(new CustomEvent("feed:refresh"));
-                  }
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                  window.dispatchEvent(new CustomEvent("feed:refresh"));
                 } else {
                   router.push("/");
                 }
