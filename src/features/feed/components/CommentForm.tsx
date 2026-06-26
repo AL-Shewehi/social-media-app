@@ -52,7 +52,7 @@ export default function CommentForm({ postId, user }: CommentFormProps) {
             }
           );
         });
-      queryClient.invalidateQueries({ queryKey: ["post-comments", postId] });
+      queryClient.refetchQueries({ queryKey: ["post-comments", postId] });
     },
     onError: (error) => {
       toast.error(

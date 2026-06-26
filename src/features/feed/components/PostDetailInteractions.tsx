@@ -106,6 +106,7 @@ export default function PostDetailInteractions({
     onSuccess: () => {
       setCommentText("");
       queryClient.invalidateQueries({ queryKey: postKeys.detail(post.id) });
+      queryClient.refetchQueries({ queryKey: ["post-comments", post.id] });
       queryClient
         .getQueryCache()
         .findAll({ queryKey: feedKeys.all })

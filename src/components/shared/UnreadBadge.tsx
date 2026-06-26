@@ -3,12 +3,14 @@
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getGlobalUnreadCountAction } from "@/features/chat/actions";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface UnreadBadgeProps {
   currentUserId: string;
 }
 
 export default function UnreadBadge({ currentUserId }: UnreadBadgeProps) {
+  const queryClient = useQueryClient();
   const [unreadCount, setUnreadCount] = useState(0);
 
   const loadUnreadCount = useCallback(async () => {
@@ -37,10 +39,41 @@ export default function UnreadBadge({ currentUserId }: UnreadBadgeProps) {
           event: "INSERT",
           schema: "public",
           table: "messages",
-          filter: `sender_id=neq.${currentUserId}`,
+        },
+        (payload) => {
+          if (payload.new.sender_id !== currentUserId) {
+            loadUnreadCount();
+            queryClient.invalidateQueries({ queryKey: ["unread-messages-count"] });
+            queryClient.invalidateQueries({ queryKey: ["conversations"] });
+          }
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "conversations",
+          filter: `user_one_id=eq.${currentUserId}`,
         },
         () => {
           loadUnreadCount();
+          queryClient.invalidateQueries({ queryKey: ["unread-messages-count"] });
+          queryClient.invalidateQueries({ queryKey: ["conversations"] });
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "conversations",
+          filter: `user_two_id=eq.${currentUserId}`,
+        },
+        () => {
+          loadUnreadCount();
+          queryClient.invalidateQueries({ queryKey: ["unread-messages-count"] });
+          queryClient.invalidateQueries({ queryKey: ["conversations"] });
         },
       )
       .subscribe();

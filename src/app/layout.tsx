@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils";
 import ReactQueryProvider from "@/lib/react-query";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
-import GlobalPostModal from "@/features/feed/components/GlobalPostModal";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -20,12 +19,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="ar"
-      className={cn("font-sans", geist.variable)}
-      suppressHydrationWarning
-    >
-      <body dir="rtl">
+    <html lang="ar" suppressHydrationWarning>
+      <body className={cn("font-sans", geist.variable)} dir="rtl">
         <ReactQueryProvider>
           <ThemeProvider
             attribute="class"
@@ -35,7 +30,6 @@ export default function RootLayout({
           >
             {children}
             <Toaster />
-            <GlobalPostModal />
           </ThemeProvider>
         </ReactQueryProvider>
       </body>

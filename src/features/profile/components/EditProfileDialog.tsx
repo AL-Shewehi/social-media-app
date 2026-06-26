@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, Edit2 } from "lucide-react";
 import { updateProfileAction } from "@/features/profile/actions";
 import { toast } from "sonner";
 import type { Profile } from "@/types/database.types";
@@ -19,18 +19,15 @@ import AvatarUploader from "./AvatarUploader";
 
 interface EditProfileDialogProps {
   userProfile: Profile;
-  trigger: React.ReactNode;
 }
 
 export default function EditProfileDialog({
   userProfile,
-  trigger,
 }: EditProfileDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [fullName, setFullName] = useState(userProfile.full_name || "");
   const [isPending, setIsPending] = useState(false);
 
-  // تتبع حالة الرفع من المكون الابن لتعطيل زر "حفظ" أثناء رفع الصورة
   const [isAvatarUploading, setIsAvatarUploading] = useState(false);
 
   const fallbackLetter = fullName.charAt(0).toUpperCase() || "?";
@@ -58,7 +55,12 @@ export default function EditProfileDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="gap-2 rounded-lg font-medium shadow-sm mb-2 cursor-pointer">
+          <Edit2 className="h-4 w-4" />
+          <span>تعديل الملف الشخصي</span>
+        </Button>
+      </DialogTrigger>
       <DialogContent className="sm:max-w-106.25 p-0 overflow-hidden bg-card border rounded-xl">
         <DialogHeader className="p-4 border-b">
           <DialogTitle className="text-center font-bold text-lg">

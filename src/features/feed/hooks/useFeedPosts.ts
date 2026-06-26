@@ -116,12 +116,11 @@ export function useFeedPosts({ initialPosts, allowedUserIds, profileUserId }: Us
 
   useEffect(() => {
     const handler = () => {
-      mergeNewPosts();
       queryClient.invalidateQueries({ queryKey: ["feed"] });
     };
     window.addEventListener("feed:refresh", handler);
     return () => window.removeEventListener("feed:refresh", handler);
-  }, [mergeNewPosts, queryClient]);
+  }, [queryClient]);
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
 

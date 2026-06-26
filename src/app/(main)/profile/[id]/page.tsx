@@ -1,7 +1,6 @@
 import FeedPosts from "@/features/feed/components/FeedPosts";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Calendar, Edit } from "lucide-react";
+import { Calendar } from "lucide-react";
 import EditProfileDialog from "@/features/profile/components/EditProfileDialog";
 import CreatePost from "@/features/feed/components/CreatePost";
 import FriendshipButton from "@/features/friends/components/FriendshipButton";
@@ -83,15 +82,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           </div>
 
           {isMyOwnProfile ? (
-            <EditProfileDialog
-              userProfile={targetProfile}
-              trigger={
-                <Button className="gap-2 rounded-lg font-medium shadow-sm mb-2 cursor-pointer">
-                  <Edit className="h-4 w-4" />
-                  <span>تعديل الملف الشخصي</span>
-                </Button>
-              }
-            />
+            <EditProfileDialog userProfile={targetProfile} />
           ) : (
             <div>
               <MessageButton targetUserId={profileUserId} variant="outline" />

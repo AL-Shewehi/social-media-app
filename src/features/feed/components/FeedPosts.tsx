@@ -28,12 +28,16 @@ export default function FeedPosts({
     profileUserId,
   });
 
+  const uniquePosts = Array.from(
+    new Map(posts.map((post) => [post.id, post])).values(),
+  );
+
   const handleNewPostsClick = () => {
     mergeNewPosts();
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  if (posts.length === 0) {
+  if (uniquePosts.length === 0) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
@@ -44,7 +48,7 @@ export default function FeedPosts({
             لا توجد منشورات بعد
           </h3>
           <p className="text-sm text-muted-foreground">
-            شارك أول منشور لك أو قم بإضافة بعض الأصدقاء
+            شارع أول منشور لك أو قم بإضافة بعض الأصدقاء
           </p>
         </div>
       </div>
@@ -70,9 +74,9 @@ export default function FeedPosts({
         )}
       </AnimatePresence>
 
-      {posts.map((post, index) => (
+      {uniquePosts.map((post, index) => (
         <PostCard
-          key={post.id}
+          key={`${post.id}-${index}`}
           post={post}
           currentUserId={currentUserId}
           currentUserProfile={currentUserProfile}

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { Bell } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,6 +53,7 @@ export default function NotificationsDropdown({
   const [unreadCount, setUnreadCount] = useState(0);
   const [isDesktop, setIsDesktop] = useState(false);
   const openPostModal = useUIStore((s) => s.openPostModal);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 768px)");
@@ -88,6 +90,8 @@ export default function NotificationsDropdown({
         },
         () => {
           loadNotifications();
+          queryClient.invalidateQueries({ queryKey: ["notifications"] });
+          queryClient.invalidateQueries({ queryKey: ["unread-notifications-count"] });
         },
       )
       .subscribe();
