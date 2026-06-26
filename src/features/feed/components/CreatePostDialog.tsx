@@ -148,6 +148,7 @@ export default function CreatePostDialog({
         setPostText("");
         removeSelectedImage();
         onOpenChange(false);
+        window.dispatchEvent(new CustomEvent("feed:refresh"));
       } else {
         toast.error(result.error || "حدث خطأ أثناء النشر");
       }
