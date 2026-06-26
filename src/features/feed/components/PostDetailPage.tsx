@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { fetchSinglePostAction } from "../actions";
-import { createClient } from "@/lib/supabase/client";
 import { normalizeProfile } from "@/lib/normalize";
 import { postKeys } from "@/lib/query-key-factory";
 import PostDetailMedia from "./PostDetailMedia";
@@ -18,7 +17,6 @@ interface PostDetailPageProps {
 }
 
 export default function PostDetailPage({ initialPost, currentUserId, currentUserProfile }: PostDetailPageProps) {
-  const queryClient = useQueryClient();
   const [isShareOpen, setIsShareOpen] = useState(false);
 
   const { data: post } = useQuery({
@@ -30,37 +28,8 @@ export default function PostDetailPage({ initialPost, currentUserId, currentUser
     },
     initialData: initialPost ?? undefined,
     enabled: !!initialPost?.id,
+    refetchInterval: 60_000,
   });
-
-  useEffect(() => {
-    if (!initialPost?.id) return;
-    let isMounted = true;
-    const supabase = createClient();
-
-    const channel = supabase
-      .channel(`post-detail-${initialPost.id}`)
-      .on("postgres_changes", {
-        event: "*",
-        schema: "public",
-        table: "posts",
-        filter: `id=eq.${initialPost.id}`,
-      }, () => {
-        if (!isMounted) return;
-        queryClient.invalidateQueries({ queryKey: ["post", initialPost.id] });
-      })
-      .on("postgres_changes", {
-        event: "INSERT",
-        schema: "public",
-        table: "comments",
-        filter: `post_id=eq.${initialPost.id}`,
-      }, () => {
-        if (!isMounted) return;
-        queryClient.invalidateQueries({ queryKey: ["post", initialPost.id] });
-      })
-      .subscribe();
-
-    return () => { isMounted = false; supabase.removeChannel(channel); };
-  }, [initialPost?.id, queryClient]);
 
   if (!post) {
     return (

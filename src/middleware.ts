@@ -56,6 +56,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * - الصور والملفات الثابتة
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|monitoring|api/sentry|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }

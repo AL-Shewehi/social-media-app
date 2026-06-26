@@ -21,3 +21,7 @@ export const likeKeys = {
 export const friendKeys = {
   ids: ["friend-ids"] as const,
 };
+
+export const notificationKeys = {
+  list: ["notifications"] as const,
+};

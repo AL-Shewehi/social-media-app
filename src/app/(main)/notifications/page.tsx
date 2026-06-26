@@ -1,58 +1,68 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Bell } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { formatRelativeTime } from "@/lib/formatDate";
 import { fetchNotificationsAction, markNotificationsAsReadAction } from "@/features/notifications/actions";
 import { getNotificationDetails } from "@/lib/notification-utils";
+import { notificationKeys } from "@/lib/query-key-factory";
 import type { NotificationItem } from "@/components/shared/NotificationsDropdown";
 import Link from "next/link";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [realtimeKey, setRealtimeKey] = useState(0);
 
-  const loadNotifications = useCallback(async () => {
-    const result = await fetchNotificationsAction();
-    if (result.success && result.data) {
-      setNotifications(result.data);
-    }
-    setIsLoading(false);
-  }, []);
-
-  useEffect(() => {
-    loadNotifications();
-    createClient().auth.getSession().then(({ data }) => {
-      if (data.session?.user) {
-        setCurrentUserId(data.session.user.id);
-      }
-    });
-  }, [loadNotifications]);
+  const { data: notifications = [], isLoading } = useQuery({
+    queryKey: notificationKeys.list,
+    queryFn: async () => {
+      const result = await fetchNotificationsAction();
+      if (!result.success) throw new Error(result.error);
+      return (result.data ?? []) as NotificationItem[];
+    },
+    staleTime: 30_000,
+  });
 
   useEffect(() => {
     markNotificationsAsReadAction();
   }, []);
 
   useEffect(() => {
+    createClient().auth.getSession().then(({ data }) => {
+      if (data.session?.user) {
+        setCurrentUserId(data.session.user.id);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
     if (!currentUserId) return;
     const supabase = createClient();
+    const id = crypto.randomUUID();
     const channel = supabase
-      .channel("notifications-page-channel")
+      .channel(`notifications-page-${id}`)
       .on("postgres_changes", {
         event: "INSERT",
         schema: "public",
         table: "notifications",
         filter: `receiver_id=eq.${currentUserId}`,
       }, () => {
-        loadNotifications();
+        setRealtimeKey((k) => k + 1);
       })
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [loadNotifications, currentUserId]);
+  }, [currentUserId]);
+
+  useEffect(() => {
+    if (realtimeKey > 0) {
+      queryClient.invalidateQueries({ queryKey: notificationKeys.list });
+    }
+  }, [realtimeKey, queryClient]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] bg-background">

@@ -1,22 +1,63 @@
 "use client"
 
 import { InfiniteData, useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { getChatMessagesAction, getConversationsListAction, getConversationParticipantAction, sendChatMessageAction } from "../actions"
+import { getChatMessagesAction, getConversationsListAction, getConversationParticipantAction, sendChatMessageAction, markMessagesAsReadAction } from "../actions"
 import { ChatMessage, ConversationListItem, ChatParticipant } from "@/types/database.types"
 import { useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
+import { chatKeys } from "@/lib/query-key-factory"
 import { toast } from "sonner"
 
 export function useConversations() {
-  return useQuery({
-    queryKey: ["conversations"],
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: chatKeys.conversations,
     queryFn: async () => {
       const result = await getConversationsListAction();
       if (!result.success) throw new Error(result.error);
       return result.data as ConversationListItem[];
     },
-    staleTime: 5 * 60 * 1000, // 5 دقائق
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
+
+  useEffect(() => {
+    const supabase = createClient();
+
+    const channel = supabase
+      .channel("conversations-realtime")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+        },
+        (payload) => {
+          const conversations = queryClient.getQueryData<ConversationListItem[]>(chatKeys.conversations);
+          if (!conversations) return;
+
+          const match = conversations.find(
+            (c) => c.id === (payload.new.conversation_id as string),
+          );
+          if (!match) return;
+
+          const conversationId = payload.new.conversation_id as string;
+
+          queryClient.invalidateQueries({ queryKey: chatKeys.conversations });
+          queryClient.invalidateQueries({ queryKey: chatKeys.messages(conversationId) });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
+  return query;
 }
 
 export function useConversationParticipant(conversationId: string) {
@@ -48,6 +89,7 @@ export function useChatMessages(conversationId: string, currentUserId: string) {
       return lastPage[lastPage.length - 1].created_at;
     },
     enabled: !!conversationId,
+    staleTime: 0,
   });
 
   useEffect(() => {
@@ -55,8 +97,10 @@ export function useChatMessages(conversationId: string, currentUserId: string) {
     let isMounted = true;
     const supabase = createClient();
 
+    // crypto.randomUUID() لتجنب تعارض القنوات في Strict Mode
+    const id = crypto.randomUUID();
     const channel = supabase
-      .channel(`chat-${conversationId}`)
+      .channel(`chat-${conversationId}-${id}`)
 
       .on(
         "postgres_changes",
@@ -103,6 +147,9 @@ export function useChatMessages(conversationId: string, currentUserId: string) {
             };
           });
 
+          // invalidation كشبكة أمان للتأكد من أن الكاش محدث
+          queryClient.invalidateQueries({ queryKey });
+
           queryClient.setQueryData<ConversationListItem[]>(["conversations"], (oldConversations) => {
             if (!oldConversations) return oldConversations;
 
@@ -123,9 +170,7 @@ export function useChatMessages(conversationId: string, currentUserId: string) {
                   created_at: incomingDate > new Date(conversation.created_at)
                     ? formattedMessage.created_at
                     : conversation.created_at,
-                  unreadCount: formattedMessage.sender_id !== currentUserId
-                    ? (conversation.unreadCount || 0) + 1
-                    : conversation.unreadCount,
+                  unreadCount: formattedMessage.sender_id !== currentUserId ? 0 : conversation.unreadCount,
                 };
               })
               .sort((a, b) => {
@@ -134,6 +179,12 @@ export function useChatMessages(conversationId: string, currentUserId: string) {
                 return new Date(dateB).getTime() - new Date(dateA).getTime();
               });
           });
+
+          if (formattedMessage.sender_id !== currentUserId) {
+            markMessagesAsReadAction(conversationId).then(() => {
+              queryClient.invalidateQueries({ queryKey: chatKeys.conversations });
+            });
+          }
         }
       )
 

@@ -42,11 +42,13 @@ export type Post = {
 };
 
 
-export type PostCardPost = Omit<Post, 'likes' | 'shared_post'> & {
+export type PostCardPost = Omit<Post, 'likes' | 'shared_post' | 'comments'> & {
   likesCount?: number;
   isLikedByMe?: boolean;
   likes?: Like[] | null;
   shared_post: SharedPost | null;
+  commentsCount: number;
+  comments?: Comment[] | null;
 };
 
 export type PostCardProps = {
@@ -73,17 +75,25 @@ export interface ChatMessage {
   sender?: ChatParticipant | null;
 }
 
+// يعكس هيكل جدول conversations في قاعدة البيانات
+export interface ConversationRow {
+  id: string;
+  created_at: string;
+  user_one_id: string;
+  user_two_id: string;
+  user_one_unread_count: number;
+  user_two_unread_count: number;
+}
+
 export interface ConversationListItem {
   id: string;
   created_at: string;
-  // Participant هنا يمثل "الطرف الآخر" في المحادثة وليس المستخدم الحالي
-  participant: ChatParticipant; 
-  // آخر رسالة لعرضها في قائمة المحادثات (Preview)
+  participant: ChatParticipant;
   lastMessage?: {
     content: string;
     created_at: string;
     is_read: boolean;
     sender_id: string;
   } | null;
-  unreadCount?: number;
+  unreadCount: number;
 }

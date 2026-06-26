@@ -5,7 +5,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { createCommentAction } from "@/features/feed/actions";
 import { useMutation, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { feedKeys } from "@/lib/query-key-factory";
-import type { Profile, Comment, PostCardPost } from "@/types/database.types";
+import type { Profile, PostCardPost } from "@/types/database.types";
 import { toast } from "sonner";
 import { Send } from "lucide-react";
 
@@ -26,16 +26,8 @@ export default function CommentForm({ postId, user }: CommentFormProps) {
       if (!result.success) throw new Error(result.error);
       return result.data;
     },
-    onSuccess: (newCommentData) => {
+    onSuccess: () => {
       setCommentText("");
-
-      const newComment: Comment = {
-        id: newCommentData.id,
-        content: newCommentData.content,
-        created_at: newCommentData.created_at,
-        user_id: newCommentData.user_id,
-        profiles: user,
-      };
 
       queryClient
         .getQueryCache()
@@ -52,7 +44,7 @@ export default function CommentForm({ postId, user }: CommentFormProps) {
                     if (p.id !== postId) return p;
                     return {
                       ...p,
-                      comments: [...(p.comments || []), newComment],
+                      commentsCount: p.commentsCount + 1,
                     };
                   })
                 ),
@@ -60,6 +52,7 @@ export default function CommentForm({ postId, user }: CommentFormProps) {
             }
           );
         });
+      queryClient.invalidateQueries({ queryKey: ["post-comments", postId] });
     },
     onError: (error) => {
       toast.error(

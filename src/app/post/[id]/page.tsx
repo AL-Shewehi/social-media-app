@@ -2,6 +2,11 @@ import { requireUser, getProfile } from "@/lib/supabase/server";
 import { fetchSinglePostAction } from "@/features/feed/actions";
 import PostDetailPage from "@/features/feed/components/PostDetailPage";
 
+export const metadata = {
+  title: "Socially | المنشور",
+  description: "عرض المنشور لمستخدم على Socially.",
+}
+
 export default async function PostPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { user } = await requireUser();

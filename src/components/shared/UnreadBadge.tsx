@@ -15,6 +15,8 @@ export default function UnreadBadge({ currentUserId }: UnreadBadgeProps) {
     const result = await getGlobalUnreadCountAction();
     if (result.success && typeof result.data === "number") {
       setUnreadCount(result.data);
+    } else {
+      console.error("[UnreadBadge] فشل تحميل عدد الرسائل غير المقروءة:", result.error);
     }
   }, []);
 

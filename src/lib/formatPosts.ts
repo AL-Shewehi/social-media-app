@@ -30,14 +30,13 @@ export type RawPostData = {
   image_url: string | null;
   shared_post_id: string | null;
   profiles: RawProfileData | RawProfileData[] | null;
-  comments: RawCommentData[] | null;
+  comments: { count: number }[] | null;
   likes: { count: number }[] | null;
   shared_post: RawSharedPostData | RawSharedPostData[] | null;
 };
 
 export function formatPosts(posts: RawPostData[], likedPostIds: Set<string>): PostCardPost[] {
   return posts.map((post) => {
-    // لو البوست ده عبارة عن "مشاركة" لبوست تاني ياخد البوست الأول
     const rawShared = Array.isArray(post.shared_post) ? post.shared_post[0] : post.shared_post;
 
     return {
@@ -50,13 +49,7 @@ export function formatPosts(posts: RawPostData[], likedPostIds: Set<string>): Po
       
       profiles: normalizeProfile(post.profiles),
       
-      comments: post.comments?.map((c) => ({
-        id: c.id,
-        content: c.content,
-        created_at: c.created_at,
-        user_id: c.user_id,
-        profiles: normalizeProfile(c.profiles),
-      })) ?? [],
+      commentsCount: post.comments?.[0]?.count ?? 0,
       
       shared_post: rawShared ? {
           id: rawShared.id,

@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { type PostCardProps, type PostCardPost } from "@/types/database.types";
 import { useState } from "react";
+import { useUIStore } from "@/store/useUIStore";
 import {
   useMutation,
   useQueryClient,
@@ -37,11 +38,8 @@ import Link from "next/link";
 import { formatRelativeTime } from "@/lib/formatDate";
 import { motion, AnimatePresence } from "framer-motion";
 import CreatePostDialog from "./CreatePostDialog";
+import { linkifyText } from "@/lib/linkify";
 import Image from "next/image";
-const CommentsDialog = dynamic(() => import("./CommentsDialog"), {
-  ssr: false,
-});
-
 const LikesDialog = dynamic(() => import("./LikesDialog"), {
   ssr: false,
 });
@@ -57,10 +55,11 @@ export default function PostCard({
   priority = false,
 }: PostCardProps) {
   const queryClient = useQueryClient();
-  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+  const openPostModal = useUIStore((s) => s.openPostModal);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [isLikesOpen, setIsLikesOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const sharedPostId = post.shared_post_id;
 
@@ -253,8 +252,27 @@ export default function PostCard({
       <CardContent
         className="p-4 pt-2 pb-3 text-[15px] leading-relaxed text-foreground wrap-break-word"
         dir="auto"
+        onClick={() => {
+          if (window.innerWidth < 768 && post.content.length > 300) {
+            setIsExpanded((p) => !p);
+          }
+        }}
       >
-        {post.content}
+        <span className={!isExpanded && post.content.length > 300 ? "line-clamp-4" : ""}>
+          {linkifyText(post.content)}
+        </span>
+
+        {post.content.length > 300 && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExpanded((p) => !p);
+            }}
+            className="block mt-1 text-sm text-primary hover:underline font-medium cursor-pointer"
+          >
+            {isExpanded ? "عرض أقل" : "عرض المزيد"}
+          </button>
+        )}
 
         {/* ─── تصميم البوست المشارك ─── */}
         {sharedPostId && (
@@ -280,7 +298,7 @@ export default function PostCard({
 
                 {sharedPost.content && (
                   <div className="p-3 text-[14px] text-muted-foreground">
-                    {sharedPost.content}
+                    {linkifyText(sharedPost.content)}
                   </div>
                 )}
 
@@ -331,7 +349,7 @@ export default function PostCard({
         </Link>
       )}
 
-      {(displayLikesCount > 0 || (post.comments?.length || 0) > 0) && (
+      {(displayLikesCount > 0 || post.commentsCount > 0) && (
         <div className="px-4 py-2 flex items-center justify-between text-xs text-muted-foreground border-b border-border/40">
           <div>
             {displayLikesCount > 0 && (
@@ -345,13 +363,13 @@ export default function PostCard({
             )}
           </div>
           <div>
-            {(post.comments?.length || 0) > 0 && (
+            {post.commentsCount > 0 && (
               <span
-                onClick={() => setIsCommentsOpen(true)}
+                onClick={() => openPostModal(post.id)}
                 className="hover:underline cursor-pointer"
               >
-                {post.comments?.length}{" "}
-                {post.comments?.length === 1 ? "تعليق" : "تعليقات"}
+                {post.commentsCount}{" "}
+                {post.commentsCount === 1 ? "تعليق" : "تعليقات"}
               </span>
             )}
           </div>
@@ -359,7 +377,7 @@ export default function PostCard({
       )}
 
       <div className="px-4">
-        {!(displayLikesCount > 0 || (post.comments?.length || 0) > 0) && (
+        {!(displayLikesCount > 0 || post.commentsCount > 0) && (
           <div className="border-t border-border" />
         )}
       </div>
@@ -393,7 +411,7 @@ export default function PostCard({
 
         <Button
           variant="ghost"
-          onClick={() => setIsCommentsOpen(true)}
+          onClick={() => openPostModal(post.id)}
           className="flex-1 gap-2 h-9 text-muted-foreground rounded-lg hover:bg-secondary transition text-sm cursor-pointer"
         >
           <MessageCircle className="h-5 w-5" />
@@ -409,14 +427,6 @@ export default function PostCard({
           <span>مشاركة</span>
         </Button>
       </CardFooter>
-
-      <CommentsDialog
-        post={post}
-        user={currentUserProfile ?? null}
-        open={isCommentsOpen}
-        onOpenChange={setIsCommentsOpen}
-        trigger={null}
-      />
 
       <DeletePostDialog
         open={isDeleteOpen}

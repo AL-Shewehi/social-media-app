@@ -14,6 +14,7 @@ import {
 import { formatRelativeTime } from "@/lib/formatDate";
 import { getNotificationDetails } from "@/lib/notification-utils";
 import Link from "next/link";
+import { useUIStore } from "@/store/useUIStore";
 
 export interface NotificationActor {
   id: string;
@@ -40,6 +41,8 @@ interface NotificationsDropdownProps {
   onMarkAsRead: () => Promise<{ success: boolean; error?: string }>;
 }
 
+
+
 export default function NotificationsDropdown({
   currentUserId,
   onFetchNotifications,
@@ -47,6 +50,16 @@ export default function NotificationsDropdown({
 }: NotificationsDropdownProps) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [isDesktop, setIsDesktop] = useState(false);
+  const openPostModal = useUIStore((s) => s.openPostModal);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    setIsDesktop(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
 
   const loadNotifications = useCallback(async () => {
     const result = await onFetchNotifications();
@@ -143,8 +156,14 @@ export default function NotificationsDropdown({
                 >
                   <Link
                     href={linkTarget}
-                    // منع التنقل إذا كان الرابط غير صالح (مثل "#") لتجنب تجربة مستخدم سيئة
-                    onClick={(e) => linkTarget === "#" && e.preventDefault()}
+                    onClick={(e) => {
+                      if (linkTarget === "#") {
+                        e.preventDefault();
+                      } else if (isDesktop && notification.post_id) {
+                        e.preventDefault();
+                        openPostModal(notification.post_id);
+                      }
+                    }}
                     className="flex items-start gap-3 w-full"
                   >
                     <div className="relative">

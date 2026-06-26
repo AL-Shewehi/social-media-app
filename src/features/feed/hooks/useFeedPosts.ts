@@ -1,11 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { createClient } from "@/lib/supabase/client";
-import { fetchMorePostsAction, fetchProfilePostsAction } from "@/features/feed/actions";
-import { formatPosts, RawPostData } from "@/lib/formatPosts";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useInfiniteQuery, useQueryClient, InfiniteData } from "@tanstack/react-query";
-import { POST_SELECT } from "@/lib/queries/posts";
+import { fetchMorePostsAction, fetchProfilePostsAction } from "@/features/feed/actions";
 import type { PostCardPost } from "@/types/database.types";
 
 interface UseFeedPostsProps {
@@ -50,9 +47,8 @@ export function useFeedPosts({ initialPosts, allowedUserIds, profileUserId }: Us
         return lastPage[lastPage.length - 1].created_at;
       },
       initialData: { pages: [initialPosts], pageParams: [undefined] },
-      
-      staleTime: 1000 * 60 * 3,  // الحفاظ على الكاش لمدة 3 دقايق
-      gcTime: 1000 * 60 * 10,   // حذف الكاش بعد 10 دقايق
+      staleTime: 1000 * 60 * 3,
+      gcTime: 1000 * 60 * 10,
     });
 
   const hasPagination = isMainFeed;
@@ -60,112 +56,69 @@ export function useFeedPosts({ initialPosts, allowedUserIds, profileUserId }: Us
   const hasMore = hasPagination ? !!hasNextPage : false;
   const isLoadingMore = hasPagination ? isFetchingNextPage : false;
 
+  const [newPostsCount, setNewPostsCount] = useState(0);
+  const pendingPostsRef = useRef<PostCardPost[]>([]);
+  const knownIdsRef = useRef(new Set<string>());
+
   useEffect(() => {
-    let isMounted = true;
-    const supabase = createClient();
+    knownIdsRef.current = new Set(posts.map((p) => p.id));
+  }, [posts]);
 
-    const uniqueChannelId = crypto.randomUUID();
-    const channel = supabase
-      .channel(`realtime-feed-${uniqueChannelId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "posts" },
-        (payload) => {
-          if (!isMounted) return;
+  useEffect(() => {
+    if (!isMainFeed) return;
 
-          if (payload.eventType === "DELETE") {
-            queryClient
-              .getQueryCache()
-              .findAll({ queryKey: ["feed"] })
-              .forEach((query) => {
-                queryClient.setQueryData<InfiniteData<PostCardPost[]>>(
-                  query.queryKey,
-                  (old) => {
-                    if (!old) return old;
-                    return {
-                      ...old,
-                      pages: old.pages.map((page) =>
-                        page.filter((p) => p.id !== payload.old.id)
-                      ),
-                    };
-                  }
-                );
-              });
-          } else if (payload.eventType === "INSERT") {
-            const newPostUserId = (payload.new as Record<string, unknown>)
-              ?.user_id as string | undefined;
+    const poll = async () => {
+      try {
+        const result = await fetchMorePostsAction(undefined, allowedUserIds ?? []);
+        if (!result.success) return;
 
-            const fetchFullPostData = async () => {
-              try {
-                const { data: fullPostData, error } = await supabase
-                  .from("posts")
-                  .select(POST_SELECT)
-                  .eq("id", payload.new.id)
-                  .single();
+        const latestPosts = result.data as PostCardPost[];
+        const knownIds = knownIdsRef.current;
 
-                if (error || !fullPostData || !isMounted) return;
+        const newOnes = latestPosts.filter((p) => !knownIds.has(p.id));
+        if (newOnes.length === 0) return;
 
-                const newFormattedPost = formatPosts(
-                  [fullPostData as unknown as RawPostData],
-                  new Set()
-                )[0];
-                if (!newFormattedPost) return;
-
-                queryClient
-                  .getQueryCache()
-                  .findAll({ queryKey: ["feed"] })
-                  .forEach((query) => {
-                    const key = query.queryKey;
-                    const feedType = key[1];
-
-                    if (feedType === "all") {
-                      const allowedList = (key[2] as string)?.split(",") || [];
-                      if (
-                        newPostUserId &&
-                        !allowedList.includes(newPostUserId)
-                      )
-                        return;
-                    } else if (feedType === "profile") {
-                      if (newPostUserId !== key[2]) return;
-                    }
-
-                    queryClient.setQueryData<InfiniteData<PostCardPost[]>>(
-                      query.queryKey,
-                      (old) => {
-                        if (!old) return old;
-                        const alreadyExists = old.pages.some((page) =>
-                          page.some((p) => p.id === newFormattedPost.id)
-                        );
-                        if (alreadyExists) return old;
-                        return {
-                          ...old,
-                          pages: [
-                            [
-                              newFormattedPost as PostCardPost,
-                              ...old.pages[0],
-                            ],
-                            ...old.pages.slice(1),
-                          ],
-                        };
-                      }
-                    );
-                  });
-              } catch {
-                /* silent */
-              }
-            };
-
-            fetchFullPostData();
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      isMounted = false;
-      supabase.removeChannel(channel);
+        pendingPostsRef.current = [...newOnes, ...pendingPostsRef.current];
+        newOnes.forEach((p) => knownIds.add(p.id));
+        setNewPostsCount((prev) => prev + newOnes.length);
+      } catch {
+        /* silent */
+      }
     };
-  }, [queryClient]);
+
+    const interval = setInterval(poll, 60_000);
+    return () => clearInterval(interval);
+  }, [isMainFeed, allowedUserIds]);
+
+  const mergeNewPosts = useCallback(() => {
+    if (pendingPostsRef.current.length === 0) return;
+
+    queryClient.setQueryData<InfiniteData<PostCardPost[]>>(
+      queryKey,
+      (old) => {
+        if (!old) return old;
+        const existingIds = new Set(old.pages.flat().map((p) => p.id));
+        const toMerge = pendingPostsRef.current.filter((p) => !existingIds.has(p.id));
+        if (toMerge.length === 0) return old;
+        return {
+          ...old,
+          pages: [
+            [...toMerge, ...old.pages[0]],
+            ...old.pages.slice(1),
+          ],
+        };
+      }
+    );
+
+    pendingPostsRef.current = [];
+    setNewPostsCount(0);
+  }, [queryClient, queryKey]);
+
+  useEffect(() => {
+    const handler = () => mergeNewPosts();
+    window.addEventListener("feed:refresh", handler);
+    return () => window.removeEventListener("feed:refresh", handler);
+  }, [mergeNewPosts]);
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -188,5 +141,5 @@ export function useFeedPosts({ initialPosts, allowedUserIds, profileUserId }: Us
     return () => observer.disconnect();
   }, [hasMore, isLoadingMore, fetchNextPage, isProfileFeed]);
 
-  return { posts, hasMore, isLoadingMore, loadMoreRef };
+  return { posts, hasMore, isLoadingMore, loadMoreRef, newPostsCount, mergeNewPosts };
 }

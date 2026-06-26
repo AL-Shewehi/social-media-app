@@ -111,8 +111,8 @@ export default function ConversationList() {
                   )}
                 </p>
 
-                {/* عدد الرسائل الغير مقروءة */}
-                {(convo.unreadCount || 0) > 0 && (
+                {/* عدد الرسائل الغير مقروءة — نخفيها إذا كانت هذه المحادثة مفتوحة */}
+                {!isActive && (convo.unreadCount || 0) > 0 && (
                   <span className="bg-destructive text-destructive-foreground text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center">
                     {convo.unreadCount}
                   </span>

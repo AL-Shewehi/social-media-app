@@ -59,6 +59,7 @@ export async function getConversationsListAction() {
             .from("conversations")
             .select(`
                 id, created_at, user_one_id, user_two_id,
+                user_one_unread_count, user_two_unread_count,
                 user_one:user_one_id(id, full_name, avatar_url),
                 user_two:user_two_id(id, full_name, avatar_url),
                 messages (content, created_at, is_read, sender_id)
@@ -81,9 +82,9 @@ export async function getConversationsListAction() {
 
             const lastMessage = sortedMessages[0] || null;
 
-            const unreadCount = (conv.messages ?? []).filter(
-                (msg: { is_read: boolean; sender_id: string }) => !msg.is_read && msg.sender_id !== user.id
-            ).length;
+            const unreadCount = conv.user_one_id === user.id
+                ? (conv.user_one_unread_count ?? 0)
+                : (conv.user_two_unread_count ?? 0);
 
             return {
                 id: conv.id,
@@ -112,20 +113,17 @@ export async function getGlobalUnreadCountAction() {
 
         const { data: conversations, error } = await supabase
             .from("conversations")
-            .select(`
-                id,
-                messages (is_read, sender_id)
-            `)
+            .select("id, user_one_id, user_two_id, user_one_unread_count, user_two_unread_count")
             .or(`user_one_id.eq.${user.id},user_two_id.eq.${user.id}`);
 
         if (error) throw error;
         if (!conversations) return 0;
 
         const totalUnread = conversations.reduce((sum, conv) => {
-            const unreadInConv = (conv.messages ?? []).filter(
-                (msg: { is_read: boolean; sender_id: string }) => !msg.is_read && msg.sender_id !== user.id
-            ).length;
-            return sum + unreadInConv;
+            const count = conv.user_one_id === user.id
+                ? (conv.user_one_unread_count ?? 0)
+                : (conv.user_two_unread_count ?? 0);
+            return sum + count;
         }, 0);
 
         return totalUnread;
@@ -213,6 +211,7 @@ export async function sendChatMessageAction(conversationId: string, content: str
 
         if (error) throw error;
 
+        // تحديث وقت المحادثة فقط (الـ Trigger هيتكفل بزيادة الـ unread_count في الخلفية)
         await supabase
             .from("conversations")
             .update({ created_at: new Date().toISOString() })
@@ -234,14 +233,32 @@ export async function markMessagesAsReadAction(conversationId: string) {
     return withErrorHandling(async () => {
         const { supabase, user } = await requireUser();
 
-        const { error } = await supabase
+        // 1. تحديث الرسائل المستلمة لتصبح مقروءة
+        const { error: msgError } = await supabase
             .from("messages")
             .update({ is_read: true })
             .eq("conversation_id", conversationId)
             .neq("sender_id", user.id)
             .eq("is_read", false);
 
-        if (error) throw error;
+        if (msgError) throw msgError;
+
+        // 2. تصفير عداد المستخدم الحالي فقط
+        const { data: conv } = await supabase
+            .from("conversations")
+            .select("user_one_id")
+            .eq("id", conversationId)
+            .single();
+
+        if (conv) {
+            // نحدد عمود المستخدم الحالي ونصفره
+            const columnToReset = conv.user_one_id === user.id ? "user_one_unread_count" : "user_two_unread_count";
+            
+            await supabase
+                .from("conversations")
+                .update({ [columnToReset]: 0 })
+                .eq("id", conversationId);
+        }
 
         return null;
     }, "Failed to mark messages as read");

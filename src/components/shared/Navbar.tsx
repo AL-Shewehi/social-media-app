@@ -23,6 +23,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useState, useEffect, useRef } from "react";
 import NotificationsDropdown from "./NotificationsDropdown";
 import UnreadBadge from "./UnreadBadge";
+import NotificationsBadge from "./NotificationsBadge";
 
 interface NavbarProps {
   user: Profile | null;
@@ -49,6 +50,11 @@ export default function Navbar({
   const router = useRouter();
   const pathname = usePathname();
   const toggleMobileSidebar = useUIStore((state) => state.toggleMobileSidebar);
+  const setCurrentUserProfile = useUIStore((state) => state.setCurrentUserProfile);
+
+  useEffect(() => {
+    setCurrentUserProfile(user);
+  }, [user, setCurrentUserProfile]);
 
   // ─── States إدارة البحث ───
   const [searchQuery, setSearchQuery] = useState("");
@@ -109,7 +115,7 @@ export default function Navbar({
 
   return (
     <nav className="sticky top-0 z-50 flex flex-col lg:flex-row lg:items-center justify-between bg-background border-b shadow-sm select-none w-full">
-      <div className="flex items-center justify-between w-full lg:w-auto h-14 px-4 lg:flex-1 lg:justify-start gap-2">
+      <div className="flex items-center justify-between w-full lg:w-auto h-14 px-4 lg:flex-1 lg:justify-start gap-2 mb-1">
         <Link
           href="/"
           className="text-primary text-2xl lg:text-4xl font-extrabold tracking-tight hover:opacity-90 transition"
@@ -303,7 +309,11 @@ export default function Navbar({
               aria-label={item.ariaLabel}
               onClick={() => {
                 if (pathname === "/") {
-                  window.scrollTo({ top: 0, behavior: "smooth" });
+                  if (window.scrollY > 0) {
+                    window.scrollTo({ top: 0, behavior: "smooth" });
+                  } else {
+                    window.dispatchEvent(new CustomEvent("feed:refresh"));
+                  }
                 } else {
                   router.push("/");
                 }
@@ -365,6 +375,12 @@ export default function Navbar({
           )}
         >
           <Bell className="h-6 w-6" />
+          {user && (
+            <NotificationsBadge
+              currentUserId={user.id}
+              onFetchNotifications={onFetchNotifications}
+            />
+          )}
         </Link>
       </div>
 
@@ -373,7 +389,7 @@ export default function Navbar({
           variant="secondary"
           size="icon"
           aria-label="صندوق الرسائل والمحادثات"
-          className="rounded-full h-12 w-12 bg-secondary hover:bg-secondary/80 transition relative" 
+          className="rounded-full h-12 w-12 bg-secondary hover:bg-secondary/80 transition relative overflow-visible" 
         >
           <Link
             href="/chat"

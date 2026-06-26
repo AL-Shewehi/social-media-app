@@ -7,6 +7,11 @@ import PresenceInitializer from "@/features/online/components/PresenceInitialize
 import { searchProfilesAction } from "@/features/search/actions";
 import { fetchNotificationsAction, markNotificationsAsReadAction } from "@/features/notifications/actions";
 
+export const metadata = {
+  title: "Socially | الصفحة الرئيسية",
+  description: "شاهد آخر التحديثات من أصدقائك وتواصل معهم على Socially.",
+};
+
 export default async function MainLayout({
   children,
 }: {

@@ -1,6 +1,6 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Profile } from "@/types/database.types";
-import RealtimeFeedList from "./RealtimeFeedList";
+import FeedPosts from "./FeedPosts";
 import FeedErrorBoundary from "@/components/shared/FeedErrorBoundary";
 import { formatPosts, type RawPostData } from "@/lib/formatPosts";
 import { POST_SELECT, fetchUserLikedPostIds } from "@/lib/queries/posts";
@@ -44,19 +44,12 @@ export default async function FeedList({ currentUserProfile }: FeedListProps) {
 
   const allowedUserIds = [user.id, ...friendIds];
 
-  const [postsResult, likedPostIds] = await Promise.all([
-    supabase
-      .from("posts")
-      .select(POST_SELECT)
-      .in("user_id", allowedUserIds)
-      .order("created_at", { ascending: false })
-      .order("created_at", { referencedTable: "comments", ascending: true })
-      .limit(15),
-
-    fetchUserLikedPostIds(supabase, user.id, []),
-  ]);
-
-  const { data: posts, error } = postsResult;
+  const { data: posts, error } = await supabase
+    .from("posts")
+    .select(POST_SELECT)
+    .in("user_id", allowedUserIds)
+    .order("created_at", { ascending: false })
+    .limit(15);
 
   if (error) {
     console.error("🚨 خطأ أثناء جلب المنشورات:", error.message);
@@ -67,6 +60,9 @@ export default async function FeedList({ currentUserProfile }: FeedListProps) {
     );
   }
 
+  const postIds = (posts as RawPostData[] | null)?.map(p => p.id) || [];
+  const likedPostIds = await fetchUserLikedPostIds(supabase, user.id, postIds);
+
   const formattedPosts = formatPosts(
     (posts as unknown as RawPostData[]) || [],
     likedPostIds,
@@ -74,7 +70,7 @@ export default async function FeedList({ currentUserProfile }: FeedListProps) {
 
   return (
     <FeedErrorBoundary>
-      <RealtimeFeedList
+      <FeedPosts
         initialPosts={formattedPosts}
         currentUserId={user.id}
         currentUserProfile={currentUserProfile ?? null}

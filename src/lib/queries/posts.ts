@@ -1,7 +1,7 @@
 export const POST_SELECT = `
   id, content, created_at, user_id, image_url, shared_post_id,
   profiles!posts_user_id_fkey (id, full_name, avatar_url),
-  comments (id, content, created_at, user_id, profiles (id, full_name, avatar_url)),
+  comments:comments(count),
   likes (count),
   shared_post:shared_post_id (
     id, content, image_url,

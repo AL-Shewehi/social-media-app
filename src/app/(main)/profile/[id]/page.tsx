@@ -1,4 +1,4 @@
-import RealtimeFeedList from "@/features/feed/components/RealtimeFeedList";
+import FeedPosts from "@/features/feed/components/FeedPosts";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Calendar, Edit } from "lucide-react";
@@ -8,6 +8,11 @@ import FriendshipButton from "@/features/friends/components/FriendshipButton";
 import FeedErrorBoundary from "@/components/shared/FeedErrorBoundary";
 import { getProfilePageData } from "@/features/profile/actions";
 import MessageButton from "@/features/chat/components/MessageButton";
+
+export const metadata = {
+    title: "Socially | الملف الشخصي",
+    description: "عرض الملف الشخصي لمستخدم على Socially.",
+};
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -118,7 +123,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
             {isMyOwnProfile ? "منشوراتي" : `منشورات ${fullName.split(" ")[0]}`}
           </h3>
           <FeedErrorBoundary>
-            <RealtimeFeedList
+            <FeedPosts
               initialPosts={formattedPosts || []}
               currentUserId={currentUser.id}
               currentUserProfile={targetProfile}

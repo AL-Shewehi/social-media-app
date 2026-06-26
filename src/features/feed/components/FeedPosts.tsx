@@ -1,12 +1,13 @@
 "use client";
 
 import { Profile, PostCardPost } from "@/types/database.types";
-import { MessageCircle } from "lucide-react";
+import { MessageCircle, ArrowUp } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import PostCard from "./PostCard";
 import PostCardSkeleton from "./PostCardSkeleton";
 import { useFeedPosts } from "../hooks/useFeedPosts";
 
-interface RealtimeFeedListProps {
+interface FeedPostsProps {
   initialPosts: PostCardPost[];
   currentUserId: string;
   currentUserProfile?: Profile | null;
@@ -14,19 +15,23 @@ interface RealtimeFeedListProps {
   profileUserId?: string;
 }
 
-export default function RealtimeFeedList({
+export default function FeedPosts({
   initialPosts,
   currentUserId,
   currentUserProfile,
   allowedUserIds,
   profileUserId,
-}: RealtimeFeedListProps) {
-  
-  const { posts, hasMore, loadMoreRef } = useFeedPosts({
+}: FeedPostsProps) {
+  const { posts, hasMore, loadMoreRef, newPostsCount, mergeNewPosts } = useFeedPosts({
     initialPosts,
     allowedUserIds,
     profileUserId,
   });
+
+  const handleNewPostsClick = () => {
+    mergeNewPosts();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   if (posts.length === 0) {
     return (
@@ -47,7 +52,24 @@ export default function RealtimeFeedList({
   }
 
   return (
-    <div className="space-y-4 pb-10">
+    <div className="space-y-4 pb-10 relative">
+      <AnimatePresence>
+        {newPostsCount > 0 && (
+          <motion.button
+            initial={{ opacity: 0, y: -20, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.9 }}
+            onClick={handleNewPostsClick}
+            className="sticky top-2 z-30 mx-auto flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-colors cursor-pointer"
+          >
+            <ArrowUp className="h-4 w-4" />
+            <span className="text-sm font-medium whitespace-nowrap">
+              ⬆️ يوجد {newPostsCount} منشورات جديدة
+            </span>
+          </motion.button>
+        )}
+      </AnimatePresence>
+
       {posts.map((post, index) => (
         <PostCard
           key={post.id}

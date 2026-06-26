@@ -31,7 +31,16 @@ export default function ChatArea({
   const { data: participant } = useConversationParticipant(conversationId);
   const queryClient = useQueryClient();
 
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const isNearBottomRef = useRef(true);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // التمرير لأسفل تلقائياً عند وصول رسالة جديدة
+  useEffect(() => {
+    const el = messagesContainerRef.current;
+    if (!el || !isNearBottomRef.current) return;
+    el.scrollTop = el.scrollHeight - el.clientHeight;
+  }, [messages.length]);
 
   //  جعل الرسائل مقروءة عند فتح الشات
   useEffect(() => {
@@ -53,6 +62,18 @@ export default function ChatArea({
       });
     }
   }, [conversationId, queryClient]);
+
+  // تتبع ما إذا كان المستخدم قريباً من الأسفل
+  useEffect(() => {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      const threshold = 100;
+      isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+    };
+    el.addEventListener("scroll", handleScroll);
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -105,7 +126,7 @@ export default function ChatArea({
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto flex flex-col-reverse p-4 gap-3">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto flex flex-col-reverse p-4 gap-3">
         {isLoading ? (
           <div className="flex-1 flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -149,9 +170,9 @@ export default function ChatArea({
                       </span>
                       {isMe &&
                         (msg.is_read ? (
-                          <CheckCheck className="h-3.5 w-3.5 text-primary" />
+                          <CheckCheck className="h-3.5 w-3.5 text-primary-foreground" />
                         ) : (
-                          <Check className="h-3.5 w-3.5 text-muted-foreground" />
+                          <Check className="h-3.5 w-3.5 text-primary-foreground" />
                         ))}
                     </div>
                   </div>

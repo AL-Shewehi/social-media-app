@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import ReactQueryProvider from "@/lib/react-query";
 import { ThemeProvider } from "@/components/providers/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
+import GlobalPostModal from "@/features/feed/components/GlobalPostModal";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -20,12 +21,12 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="ar"
       className={cn("font-sans", geist.variable)}
       suppressHydrationWarning
     >
-      <ReactQueryProvider>
-        <body suppressHydrationWarning dir="rtl">
+      <body dir="rtl">
+        <ReactQueryProvider>
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
@@ -34,9 +35,10 @@ export default function RootLayout({
           >
             {children}
             <Toaster />
+            <GlobalPostModal />
           </ThemeProvider>
-        </body>
-      </ReactQueryProvider>
+        </ReactQueryProvider>
+      </body>
     </html>
   );
 }

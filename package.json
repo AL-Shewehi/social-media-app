@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
@@ -36,11 +36,14 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.5",
     "@faker-js/faker": "^10.4.0",
+    "@next/eslint-plugin-next": "^16.2.9",
     "@types/node": "^25.9.1",
     "@types/react": "^19.2.16",
     "@types/react-dom": "^19.2.3",
     "dotenv": "^17.4.2",
+    "eslint": "^10.5.0",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3"
   }

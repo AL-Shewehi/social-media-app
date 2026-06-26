@@ -224,7 +224,6 @@ export async function fetchProfilePostsAction(profileUserId: string, cursor?: st
       .select(POST_SELECT)
       .eq("user_id", profileUserId)
       .order("created_at", { ascending: false })
-      .order("created_at", { referencedTable: "comments", ascending: true })
       .limit(pageSize);
 
     if (cursor) {
@@ -252,7 +251,6 @@ export async function fetchMorePostsAction(cursor: string | undefined, allowedUs
       .select(POST_SELECT)
       .in("user_id", allowedUserIds.length > 0 ? allowedUserIds : ['00000000-0000-0000-0000-000000000000'])
       .order("created_at", { ascending: false })
-      .order("created_at", { referencedTable: "comments", ascending: true })
       .limit(pageSize);
 
     if (cursor) {
@@ -280,7 +278,6 @@ export async function fetchSinglePostAction(postId: string) {
       .from("posts")
       .select(POST_SELECT)
       .eq("id", postId)
-      .order("created_at", { referencedTable: "comments", ascending: true })
       .single();
 
     if (error) throw error;
@@ -291,4 +288,27 @@ export async function fetchSinglePostAction(postId: string) {
     const formatted = formatPosts([post as unknown as RawPostData], likedPostIds);
     return formatted[0] || null;
   }, "فشل جلب المنشور");
+}
+
+
+export async function fetchPostCommentsAction(postId: string) {
+  return withErrorHandling(async () => {
+    const { supabase } = await requireUser();
+
+    const { data: comments, error } = await supabase
+      .from("comments")
+      .select("id, content, created_at, user_id, profiles!comments_user_id_fkey (id, full_name, avatar_url)")
+      .eq("post_id", postId)
+      .order("created_at", { ascending: true });
+
+    if (error) throw error;
+
+    return (comments || []).map((c) => ({
+      id: c.id,
+      content: c.content,
+      created_at: c.created_at,
+      user_id: c.user_id,
+      profiles: Array.isArray(c.profiles) ? c.profiles[0] : c.profiles,
+    }));
+  }, "فشل جلب التعليقات");
 }

@@ -9,6 +9,12 @@ import SuggestedFriendsSection from "@/features/friends/components/SuggestedFrie
 import { getSuggestedFriendsAction } from "@/features/friends/actions";
 import { Profile } from "@/types/database.types";
 
+export const metadata = {
+    title: "Socially | الأصدقاء",
+    description: "تصفح قائمة أصدقائك وتابع آخر التحديثات.",
+};
+
+
 export default async function FriendsPage({
   searchParams,
 }: {
