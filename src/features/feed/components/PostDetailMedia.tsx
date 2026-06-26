@@ -17,7 +17,7 @@ export default function PostDetailMedia({ imageUrl, sharedPost, sharedAuthor }: 
         <img
           src={imageUrl}
           alt=""
-          className="w-full h-full object-cover"
+          className="w-full h-full object-contain"
         />
       ) : sharedPost ? (
         <div className="p-8 max-w-md w-full">

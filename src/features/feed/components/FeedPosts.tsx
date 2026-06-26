@@ -64,7 +64,7 @@ export default function FeedPosts({
           >
             <ArrowUp className="h-4 w-4" />
             <span className="text-sm font-medium whitespace-nowrap">
-              ⬆️ يوجد {newPostsCount} منشورات جديدة
+               يوجد {newPostsCount} منشورات جديدة
             </span>
           </motion.button>
         )}
